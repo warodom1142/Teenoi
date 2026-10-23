@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ระบบคำนวณงาน & BOM สเตนเลส</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+html,body{scroll-behavior:smooth;overflow-y:auto;font-family:'Kanit',sans-serif}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+body.adjust-mode .status-banner,body.adjust-mode .scrap-box{display:none}
+input[type=text],input[type=search],input[type=password],select,textarea{font-size:16px!important}
+.page{display:none}.page.active{display:block}
+.nav-btn{flex:1;height:40px;border-radius:9999px;font-size:20px;color:#475569;display:flex;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s,color .15s}
+.nav-btn.nav-active{background:#e0e7ff;color:#4338ca}
+.hf-btn{flex:1;min-width:0;padding:8px 2px;border-radius:10px;font-size:12px;white-space:nowrap;font-weight:700;color:#64748b;display:flex;align-items:center;justify-content:center;gap:5px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s,color .15s}
+.hf-btn.hf-active{background:#fff;color:#4338ca;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.hf-count{font-size:11px;background:#e2e8f0;color:#475569;padding:1px 6px;border-radius:9999px}
+.hf-btn.hf-active .hf-count{background:#e0e7ff;color:#4338ca}
+.hf-btn[data-f="cancel"].hf-active{color:#be123c}
+.hf-btn[data-f="cancel"].hf-active .hf-count{background:#ffe4e6;color:#be123c}
+.cut-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff}
+.cut-table th,.cut-table td{padding:6px 2px;text-align:center;font-size:11px;overflow:hidden;text-overflow:ellipsis;word-break:break-word;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0}
+.cut-table th{background:#0f172a;color:#fff;font-weight:600;border:1px solid #0f172a;white-space:nowrap}
+.cut-table td{color:#334155}
+.cut-table th:nth-child(1),.cut-table td:nth-child(1){width:9%}
+.cut-table th:nth-child(2),.cut-table td:nth-child(2){width:20%}
+.cut-table th:nth-child(3),.cut-table td:nth-child(3){width:13%}
+.cut-table th:nth-child(4),.cut-table td:nth-child(4){width:12%}
+.cut-table th:nth-child(5),.cut-table td:nth-child(5){width:12%}
+.cut-table th:nth-child(6),.cut-table td:nth-child(6){width:14%}
+.cut-table th:nth-child(7),.cut-table td:nth-child(7){width:20%}
+.cut-table tr.group-end td{border-bottom:3px solid #0f172a}
+.cut-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:3px 4px;border-radius:999px;border:1px solid;font-size:10px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.cut-badge svg{flex-shrink:0}
+.cut-badge span{overflow:hidden;text-overflow:ellipsis}
+
+#busyOverlay{position:fixed;inset:0;z-index:200000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:busyFade .2s ease-out}
+#busyOverlay .busy-card{background:#fff;border-radius:22px;padding:26px 30px 22px;min-width:230px;max-width:300px;text-align:center;box-shadow:0 20px 50px rgba(15,23,42,.35);animation:busyPop .28s cubic-bezier(.2,1.2,.4,1)}
+#busyOverlay .busy-ring{position:relative;width:64px;height:64px;margin:0 auto 14px}
+#busyOverlay .busy-ring::before,#busyOverlay .busy-ring::after{content:'';position:absolute;inset:0;border-radius:50%;border:5px solid transparent}
+#busyOverlay .busy-ring::before{border-top-color:#4f46e5;border-right-color:#818cf8;animation:busySpin 1s linear infinite}
+#busyOverlay .busy-ring::after{inset:11px;border-bottom-color:#10b981;border-left-color:#6ee7b7;animation:busySpin .75s linear infinite reverse}
+#busyOverlay .busy-ico{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:#4338ca;animation:busyPulse 1.2s ease-in-out infinite}
+#busyOverlay .busy-text{font-weight:700;font-size:15px;color:#1e1b4b}
+#busyOverlay .busy-dots span{display:inline-block;animation:busyDot 1.2s infinite both}
+#busyOverlay .busy-dots span:nth-child(2){animation-delay:.2s}
+#busyOverlay .busy-dots span:nth-child(3){animation-delay:.4s}
+#busyOverlay .busy-sub{margin-top:6px;font-size:11px;font-weight:600;color:#94a3b8}
+@keyframes busySpin{to{transform:rotate(360deg)}}
+@keyframes busyFade{from{opacity:0}to{opacity:1}}
+@keyframes busyPop{from{opacity:0;transform:scale(.85) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes busyPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.8);opacity:.6}}
+@keyframes busyDot{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+.plan-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff}
+.plan-table th,.plan-table td{padding:6px 3px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0;word-break:break-word}
+.plan-table th{background:#0f172a;color:#fff;font-weight:600;border:1px solid #0f172a;white-space:nowrap}
+.plan-table td.nm{text-align:left;padding-left:5px;font-weight:600;color:#334155}
+.plan-table tr.plan-row{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.plan-table tr.plan-row:active{background:#eef2ff}
+.plan-bar{height:5px;border-radius:9999px;background:#e2e8f0;overflow:hidden;margin-top:3px}
+.plan-bar>i{display:block;height:100%;border-radius:9999px}
+</style>
+</head>
+<body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
+<div class="w-full max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 p-3 pt-4 shadow-md space-y-3 mt-1">
+
+<!-- แผนงาน -->
+<div id="pagePlan" class="page active space-y-3">
+  <div class="text-center py-0.5"><span class="inline-block border-2 border-indigo-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">แผนงานประจำเดือน</span></div>
+  <div class="flex items-center gap-2">
+    <select id="planMonthSelect" onchange="onPlanMonthChange()" class="flex-1 min-w-0 p-2 border border-slate-300 rounded-lg font-bold text-sm bg-white text-slate-800"></select>
+    <button type="button" onclick="refreshPlan()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+  </div>
+  <div id="planStatus" class="text-xs font-bold text-slate-500 leading-snug">กำลังโหลดแผน...</div>
+  <div id="planList" class="space-y-3"></div>
+  <div id="planFooter" class="flex gap-2"></div>
+</div>
+
+<!-- คำนวณ -->
+<div id="pageCalc" class="page space-y-3">
+  <div class="text-center py-0.5"><span class="inline-block border-2 border-red-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">คำนวณเหล็กตามงาน</span></div>
+
+  <div class="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl space-y-1">
+    <div class="text-xs text-indigo-800 font-bold">
+      <span><i class="fa-solid fa-folder-open"></i> งานที่เลือก:</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 pb-1">
+      <button type="button" onclick="openBomSheet()" class="py-3 text-sm font-extrabold bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700"><i class="fa-solid fa-arrows-rotate"></i> เปลี่ยนงาน</button>
+      <button type="button" onclick="clearJob()" class="py-3 text-sm font-extrabold bg-rose-600 text-white rounded-xl shadow-sm hover:bg-rose-700"><i class="fa-solid fa-trash-can"></i> ลบงาน</button>
+    </div>
+    <div id="selectedJobTitle" class="text-sm font-extrabold text-indigo-950 truncate">-- ยังไม่ได้เลือกงาน (กดปุ่ม เปลี่ยนงาน เพื่อเลือก) --</div>
+    <div id="selectedJobPump" class="text-xs font-semibold text-indigo-700">ปั๊ม: -</div>
+    <div id="mergeInfo" class="hidden text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"></div>
+    <div class="flex items-center justify-between gap-2 pt-1.5 mt-1 border-t border-indigo-200">
+      <label for="jobMonthSelect" class="text-xs font-bold text-indigo-800 whitespace-nowrap"><i class="fa-solid fa-calendar-days"></i> เดือนงาน:</label>
+      <select id="jobMonthSelect" onchange="onJobMonthChange(this)" class="flex-1 p-1.5 border border-indigo-300 rounded-lg font-bold text-xs bg-white text-indigo-900"></select>
+    </div>
+    <div id="jobNoteBox">
+      <label for="jobNoteInput" class="block text-[11px] font-bold text-indigo-700 mb-0.5 mt-0.5">โน้ต (ถ้ามี)</label>
+      <input type="text" id="jobNoteInput" placeholder="พิมพ์หมายเหตุ เช่น เร่งด่วน / รอของเพิ่ม" class="w-full p-1.5 border border-indigo-200 rounded-lg text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+    </div>
+  </div>
+
+  <div id="qtyBox" class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between gap-2">
+    <label for="globalQty" class="font-bold text-amber-900 text-xs whitespace-nowrap"><i class="fa-solid fa-boxes-stacked"></i> จำนวนผลิต (ตัว):</label>
+    <input type="number" id="globalQty" value="1" min="1" inputmode="decimal" oninput="calculateAllRows()" class="w-32 p-1.5 text-center bg-white border border-amber-300 rounded-lg font-extrabold text-lg text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500">
+  </div>
+
+  <div id="adjustBox" class="hidden p-3 bg-amber-50 border-2 border-amber-300 rounded-xl space-y-2">
+    <div class="text-xs font-extrabold text-amber-900"><i class="fa-solid fa-screwdriver-wrench"></i> โหมดปรับสต็อก (ไม่ใช่งานผลิต)</div>
+    <div class="text-[11px] font-bold text-amber-800">เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)</div>
+    <input type="text" id="adjustNote" placeholder="หมายเหตุ เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง (จำเป็น)" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex justify-between items-center px-1">
+      <span class="text-xs font-bold text-slate-700">รายการเหล็กที่ต้องใช้ในงานนี้ (หน่วย ซม.)</span>
+      <span id="metalCountBadge" class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">0 รายการ</span>
+    </div>
+    <div id="metalCalcContainer" class="space-y-2.5"></div>
+  </div>
+
+  <button type="button" id="btnCommit" onclick="commitStock()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก</button>
+  <button type="button" onclick="resetCalcForm()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวเลขทั้งหมด</button>
+
+  <div class="border-t border-slate-200 pt-3">
+    <button type="button" onclick="toggleSplit()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-scale-balanced"></i> คำนวณแบ่งสัดส่วนหลายงาน (ตัดรวมทีเดียว)</button>
+    <div id="splitBox" class="hidden mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
+      <div class="text-xs font-extrabold text-emerald-900">1. รายการงานที่ตัดรวมกัน</div>
+      <datalist id="splitCodeList"></datalist>
+      <div id="splitRows" class="space-y-2"></div>
+      <button type="button" onclick="splitAddRow()" class="w-full py-2 bg-white border border-emerald-300 text-emerald-800 font-bold text-xs rounded-lg"><i class="fa-solid fa-plus"></i> เพิ่มโค้ดงาน</button>
+      <div class="text-xs font-extrabold text-emerald-900">2. ยอดรวมที่ตัดจริง (ซม.)</div>
+      <div class="grid grid-cols-3 gap-2">
+        <label class="text-[11px] font-bold text-purple-700">เบิกรวม<input type="number" inputmode="numeric" id="splitW" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-purple-300 rounded-lg font-extrabold text-purple-900"></label>
+        <label class="text-[11px] font-bold text-amber-700">คืนรวม<input type="number" inputmode="numeric" id="splitR" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-amber-300 rounded-lg font-extrabold text-amber-900"></label>
+        <label class="text-[11px] font-bold text-slate-600">ทิ้งรวม<input type="number" inputmode="numeric" id="splitS" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-slate-300 rounded-lg font-extrabold text-slate-800"></label>
+      </div>
+      <button type="button" onclick="splitCalc()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-equals"></i> คำนวณ</button>
+      <div id="splitResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ค้นหา BOM -->
+<div id="pageBom" class="hidden fixed inset-0 bg-slate-100 overflow-y-auto" style="z-index:10000">
+<div class="w-full max-w-lg mx-auto bg-white min-h-full p-3 space-y-3">
+  <div class="flex items-center justify-between sticky top-0 bg-white py-1" style="z-index:5">
+    <span class="font-extrabold text-base text-indigo-950"><i class="fa-solid fa-magnifying-glass text-indigo-600"></i> เลือกงาน (ค้นหา BOM)</span>
+    <button type="button" onclick="closeBomSheet()" class="w-10 h-10 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-lg" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="p-2 rounded-lg bg-slate-100 border text-center">
+    <div id="databaseStatus" class="text-xs font-bold text-slate-600">กำลังโหลดข้อมูล BOM...</div>
+    <button type="button" onclick="loadDatabaseFromGoogleSheet()" class="mt-1 px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-rotate"></i> รีโหลดข้อมูล Google Sheets</button>
+  </div>
+  <div>
+    <label class="block text-xs font-bold text-slate-700 mb-1">1. ค้นหารหัส / ชื่อสินค้า / ปั๊ม</label>
+    <input type="text" id="searchCode" oninput="searchBom()" placeholder="เช่น 1310076 หรือ 0803116" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+  </div>
+  <button type="button" onclick="document.getElementById('searchCode').value='ADJUST';searchBom();" class="w-full py-1.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 rounded-lg text-xs font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก (ไม่ใช่งานผลิต)</button>
+  <div>
+    <label class="block text-xs font-bold text-slate-700 mb-1">2. เลือกรหัสงาน / ชื่อสินค้า</label>
+    <select id="selectProduct" onchange="loadPumpOptions()" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs bg-slate-50"><option value="">-- พิมพ์ค้นหาด้านบนเพื่อเลือก --</option></select>
+  </div>
+  <div id="pumpSelectBox" class="hidden">
+    <label class="block text-xs font-bold text-slate-700 mb-1">3. เลือกปั๊ม (ท้ายตาราง)</label>
+    <select id="selectPump" onchange="previewMetalList()" class="w-full p-2 border border-blue-300 bg-blue-50 rounded-lg font-bold text-xs"><option value="">-- เลือกปั๊ม --</option></select>
+  </div>
+  <div id="bomResultCard" class="hidden p-3 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2">
+    <div class="text-xs text-indigo-900 font-bold border-b border-indigo-200 pb-1 flex justify-between">
+      <span>รายการเหล็กที่จะดึงไปคำนวณ</span><span id="previewCount" class="text-indigo-600">0 ประเภท</span>
+    </div>
+    <div id="previewMetalList" class="text-xs space-y-1 max-h-36 overflow-y-auto pr-1"></div>
+    <button type="button" onclick="applyJobToCalculator()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg shadow-sm mt-2"><i class="fa-solid fa-file-import"></i> ดึงงานนี้ไปหน้าคำนวณ</button>
+  </div>
+</div>
+</div>
+
+<!-- สต็อก -->
+<div id="pageStock" class="page space-y-3">
+  <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+    <div class="flex items-center justify-between gap-2">
+      <div>
+        <div class="font-extrabold text-sm text-indigo-950"><i class="fa-solid fa-warehouse text-indigo-600"></i> สต็อกคงเหลือ</div>
+        <div id="stockUpdated" class="text-[11px] font-semibold text-slate-500">-</div>
+      </div>
+      <div class="flex gap-1.5">
+        <button type="button" onclick="loadStock()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+        <button type="button" id="btnCopyStock" onclick="copyStockSummary()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold"><i class="fa-regular fa-copy"></i> คัดลอกสต็อก</button>
+      </div>
+    </div>
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <table class="w-full text-sm">
+        <thead class="bg-indigo-50 text-[11px] text-indigo-900"><tr><th class="py-1.5 px-2 text-left font-bold">เหล็ก</th><th class="py-1.5 px-2 text-left font-bold">รหัส</th><th class="py-1.5 px-2 text-right font-bold">คงเหลือ (ซม.)</th></tr></thead>
+        <tbody id="stockTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ประวัติ -->
+<div id="pageHistory" class="page space-y-3">
+  <div id="historyListView" class="space-y-3">
+    <div class="text-center py-0.5"><span class="inline-block border-2 border-emerald-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">ประวัติการตัดสต็อก</span></div>
+    <div class="flex items-center justify-between gap-2">
+      <span id="historyStatus" class="text-xs font-bold text-slate-500">-</span>
+      <button type="button" onclick="loadHistory()" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+    </div>
+    <div id="historyFilter" class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+      <button type="button" data-f="all" onclick="setHistoryFilter('all')" class="hf-btn">รวม <span class="hf-count">0</span></button>
+      <button type="button" data-f="done" onclick="setHistoryFilter('done')" class="hf-btn hf-active">เสร็จ <span class="hf-count">0</span></button>
+      <button type="button" data-f="pending" onclick="setHistoryFilter('pending')" class="hf-btn">ยังไม่เสร็จ <span class="hf-count">0</span></button>
+      <button type="button" data-f="cancel" onclick="setHistoryFilter('cancel')" class="hf-btn">ยกเลิก <span class="hf-count">0</span></button>
+    </div>
+    <div class="flex gap-1.5 items-center">
+      <input type="date" id="historyDateFilter" onchange="renderHistoryList()" class="flex-1 min-w-0 p-1.5 border border-slate-300 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button type="button" onclick="setHistoryDateToday()" class="px-2.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-lg text-[11px] font-bold whitespace-nowrap">วันนี้</button>
+      <button type="button" onclick="setHistoryDateAll()" class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold whitespace-nowrap">ทั้งหมด</button>
+    </div>
+    <select id="historyMonthFilter" onchange="renderHistoryList()" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs bg-white text-slate-700"><option value="">ทุกเดือนงาน</option></select>
+    <input type="text" id="historySearch" oninput="renderHistoryList()" placeholder="ค้นหารหัสงาน / ชื่องาน / ปั๊ม / ผู้ตัด" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <div id="historyList" class="space-y-2"></div>
+  </div>
+  <div id="historyDetail" class="hidden space-y-2"></div>
+</div>
+
+<!-- รายการตัด -->
+<div id="pageCut" class="page space-y-3">
+  <div class="text-center py-0.5"><span class="inline-block border-2 border-sky-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">รายการตัดเหล็ก</span></div>
+  <div class="flex items-center justify-between gap-2">
+    <span id="cutStatus" class="text-xs font-bold text-slate-500">-</span>
+    <button type="button" onclick="loadCutData()" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+  </div>
+  <div class="flex gap-2">
+    <input type="text" id="cutSearchInput" placeholder="พิมพ์ชื่อรุ่น (เช่น 6Q, RO, PT)..." onkeydown="if(event.key==='Enter'){cutSearch();}" class="flex-1 min-w-0 p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+    <button type="button" onclick="cutSearch()" class="px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold whitespace-nowrap">ค้นหา</button>
+  </div>
+  <div id="cutDropdownBox" class="hidden">
+    <label for="cutModelSelect" class="block mb-1 font-bold text-sky-900 text-xs">📋 พบหลายรายการ กรุณาเลือกรุ่น:</label>
+    <select id="cutModelSelect" onchange="cutOnModelSelected()" class="w-full p-2 border-2 border-sky-400 rounded-lg font-bold text-sm bg-sky-50 text-sky-900"><option value="">-- กรุณาเลือกรุ่น --</option></select>
+  </div>
+  <div id="cutLoading" class="text-center text-slate-500 italic text-xs py-3">กดแท็บนี้เพื่อโหลดข้อมูลรายการตัด</div>
+  <div id="cutInfoCard" class="hidden p-2.5 bg-sky-50 border-l-4 border-sky-600 rounded-lg text-xs font-bold text-sky-900">📦 รุ่นที่พบ: <span id="cutModelName"></span></div>
+  <div id="cutImagePreview" class="hidden text-center"><img id="cutProdImage" src="" alt="แบบวาดสินค้า" class="inline-block max-w-[180px] rounded-md border border-slate-300 bg-white p-1" onerror="this.style.display='none'"></div>
+  <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><div id="cutResults"></div></div>
+</div>
+
+</div>
+
+<nav class="fixed left-0 right-0 flex justify-center pointer-events-none" style="bottom:calc(14px + env(safe-area-inset-bottom));z-index:9000">
+  <div class="pointer-events-auto flex items-center gap-1 bg-white rounded-full p-1.5 border border-slate-200" style="width:calc(100% - 28px);max-width:480px;box-shadow:0 6px 24px rgba(15,23,42,.18)">
+    <button id="tabPlan" type="button" onclick="switchTab('plan')" class="nav-btn nav-active" aria-label="แผนงาน"><i class="fa-solid fa-list-check"></i></button>
+    <button id="tabCalc" type="button" onclick="switchTab('calc')" class="nav-btn" aria-label="คำนวณ"><i class="fa-solid fa-calculator"></i></button>
+    <button id="tabStock" type="button" onclick="switchTab('stock')" class="nav-btn" aria-label="สต็อก"><i class="fa-solid fa-warehouse"></i></button>
+    <button id="tabHistory" type="button" onclick="switchTab('history')" class="nav-btn" aria-label="ประวัติ"><i class="fa-solid fa-clock-rotate-left"></i></button>
+    <button id="tabCut" type="button" onclick="switchTab('cut')" class="nav-btn" aria-label="รายการตัด"><i class="fa-solid fa-scissors"></i></button>
+  </div>
+</nav>
+
+<script>
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRLPY4jgF6GPZ1VqBkwxym5DsngmydcS0cvdQICGfxFQ-z8LsAhvgu4FJda3vedp925-o-RcwjiX87i/pub?gid=153457480&single=true&output=csv';
+const STOCK_API = 'https://script.google.com/macros/s/AKfycbzxje4A-stZKyipoauhf9s-O0tj997XKs2c57Wrxy4YbFDqcRe_9qswbrcbl7tekvsN7Q/exec';
+const STOCK_TOKEN = 'bomcal'; // ต้องตรงกับ TOKEN ใน Code.gs
+const CANCEL_PIN = '1142';    // รหัสยืนยันก่อนกดยกเลิกรายการ
+
+// รายการตัดเหล็ก (ชีตแยก)
+const CUT_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3PBl4I3yN590sO0m6FN24LfVUS3gOMV8qOHZh6WI37oF8nB-AAMXYSgPR9FL8dpj0ecD5SAqK03Kn/pub?output=csv';
+// โฟลเดอร์รูปแบบวาดสินค้า เช่น 'https://xxx.com/images/' (ไฟล์ชื่อ {รหัส}.webp) ถ้าไม่มีให้เว้นว่าง
+const CUT_IMAGE_BASE = '';
+
+// ตั้งค่าเหล็กที่นี่ที่เดียว: col = ตำแหน่งสำรอง (A=0), code = รหัสเหล็ก (ใช้หาคอลัมน์จากหัวตารางก่อน)
+const METAL_COLS = [
+  { name: 'กล่อง 3/4"', col: 3, code: '1522032' }, { name: 'กล่อง 1"', col: 4, code: '1522033' },
+  { name: 'กล่อง 1" (304)', col: 5, code: '1522045' }, { name: 'กล่อง 1.5"', col: 6, code: '1522034' },
+  { name: 'กล่อง 2"', col: 7, code: '1522035' }, { name: 'กล่อง 3x1.5"', col: 8, code: '1522036' },
+  { name: 'กล่อง 4x2"', col: 9, code: '1522037' }, { name: 'ฉาก 1"', col: 10, code: '1523019' },
+  { name: 'ฉาก 1" (304)', col: 11, code: '1523023' }, { name: 'ฉาก 1.5"', col: 12, code: '1523020' },
+  { name: 'ฉาก 2"', col: 13, code: '1523021' }, { name: 'แฟลตบาร์ 2"', col: 14, code: '1524260' },
+  { name: 'แฟลตบาร์ 1.5"', col: 15, code: '1524261' }, { name: 'ML 2x240cm', col: 16, code: '1524262' },
+  { name: 'ML 10x240cm', col: 17, code: '1524263' }
+];
+const METAL_CODE = {};
+METAL_COLS.forEach(m => { METAL_CODE[m.name] = m.code; });
+
+let bomDatabase = [], currentActiveJob = null, isLoadingBom = false;
+let stockMap = {}, stockLoadedAt = null, submitId = null, historyJobs = [];
+let cutData = [], cutGroups = {}, cutLoaded = false;
+
+// ===== เดือนงาน / กลุ่มงาน (รวมตัดหลายวันเป็นการ์ดเดียว) =====
+const TH_MONTHS = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function todayStr() { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+function getCurrentJobMonth() {
+  try { const v = localStorage.getItem('bomcal_jobMonth'); if (v) return v; } catch (e) {}
+  try { return String(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Bangkok', month: 'numeric' }).format(new Date())); } catch (e) { return String(new Date().getMonth() + 1); }
+}
+function setCurrentJobMonth(v) { try { localStorage.setItem('bomcal_jobMonth', String(v)); } catch (e) {} }
+let currentJobMonth = getCurrentJobMonth();
+
+function getGroupMap() { try { return JSON.parse(localStorage.getItem('bomcal_groupmap') || '{}'); } catch (e) { return {}; } }
+function saveGroupMap(m) { try { localStorage.setItem('bomcal_groupmap', JSON.stringify(m)); } catch (e) {} }
+function getOrCreateGroupId(key) {
+  const map = getGroupMap();
+  if (map[key]) return map[key];
+  const gid = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
+  map[key] = gid; saveGroupMap(map);
+  return gid;
+}
+
+function initJobMonthSelect() {
+  const sel = document.getElementById('jobMonthSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = `เดือน ${m} (${TH_MONTHS[m]})`;
+    sel.appendChild(o);
+  }
+  sel.value = currentJobMonth;
+}
+
+async function onJobMonthChange(sel) {
+  const newVal = parseInt(sel.value, 10), oldVal = parseInt(currentJobMonth, 10);
+  if (newVal === oldVal) return;
+  const msg = newVal < oldVal
+    ? `กำลังย้อนกลับไปเดือนก่อนหน้า (เดือน ${oldVal} → เดือน ${newVal})\nงานที่ตัดสต็อกต่อจากนี้จะถูกนับว่าเป็นของเดือน ${newVal} (${TH_MONTHS[newVal]})\n\nยืนยันหรือไม่?`
+    : `งานที่ตัดสต็อกต่อจากนี้ จะถูกบันทึกลงเป็นของเดือน ${newVal} (${TH_MONTHS[newVal]}) ทันที\n\nยืนยันการเปลี่ยนเดือนหรือไม่?`;
+  const ok = await uiConfirm(msg);
+  if (!ok) { sel.value = oldVal; return; }
+  currentJobMonth = String(newVal);
+  setCurrentJobMonth(currentJobMonth);
+}
+
+function initHistoryMonthFilter() {
+  const sel = document.getElementById('historyMonthFilter');
+  if (!sel || sel.options.length > 1) return;
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = `เดือน ${m} (${TH_MONTHS[m]})`;
+    sel.appendChild(o);
+  }
+}
+
+// รายการเหล็กของงานนี้ (ตามโค้ด+ปั๊ม) ที่ "ยังไม่ได้ตัด" เทียบกับ BOM เต็ม
+function getMissingMetals(j) {
+  if (j.jobCode === 'ADJUST') return [];
+  const full = bomDatabase.find(x => x.code === j.jobCode && x.pump === j.pump);
+  if (!full) return [];
+  const have = new Set((j.items || []).map(it => it.name));
+  return Object.keys(full.metals || {}).filter(m => !have.has(m));
+}
+
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sgn = n => (n > 0 ? '+' : '') + formatNum(n);
+const diffCls = d => d > 0 ? 'bg-rose-100 border-rose-300 text-rose-800' : d < 0 ? 'bg-sky-100 border-sky-300 text-sky-800' : 'bg-emerald-100 border-emerald-300 text-emerald-800';
+function cleanText(v) { return String(v ?? '').replace(/\uFEFF/g, '').trim(); }
+function formatNum(val) {
+  if (isNaN(val)) return '0';
+  return Number.isInteger(val) ? val.toLocaleString('th-TH') : val.toLocaleString('th-TH', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+function addMetal(metals, name, value) {
+  if (value === undefined || value === null) return;
+  const text = String(value).trim();
+  if (text === '' || text === '-' || text === '–' || text === '—') return;
+  const n = parseFloat(text.replace(/,/g, '').replace(/[^\d.-]/g, ''));
+  if (!isNaN(n)) metals[name] = n;
+}
+function getSavedName() { try { return localStorage.getItem('cutterName') || ''; } catch (e) { return ''; } }
+function saveName(n) { try { localStorage.setItem('cutterName', n); } catch (e) {} }
+
+// ===== โหลด BOM =====
+function resolveMetalCols(rows, headerIndex) {
+  const headRows = rows.slice(Math.max(0, headerIndex - 2), headerIndex + 2);
+  const missing = [];
+  const cols = METAL_COLS.map(m => {
+    for (const hr of headRows) {
+      const i = hr.findIndex(c => cleanText(c).replace(/[^\d]/g, '') === m.code);
+      if (i !== -1) return { ...m, col: i };
+    }
+    missing.push(m.name);
+    return m;
+  });
+  return { cols, missing };
+}
+
+async function loadDatabaseFromGoogleSheet() {
+  if (isLoadingBom) return;
+  isLoadingBom = true;
+  const status = document.getElementById('databaseStatus');
+  status.textContent = 'กำลังโหลดข้อมูลจาก Google Sheets...';
+  status.className = 'text-xs font-bold text-indigo-600';
+  try {
+    const response = await fetch(GOOGLE_SHEET_CSV_URL + '&t=' + Date.now());
+    if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อ Google Sheets');
+    const rows = parseCSV(await response.text());
+    const headerIndex = rows.findIndex(row => row.some(x => cleanText(x).toLowerCase() === 'code') && row.some(x => cleanText(x).toLowerCase() === 'product name'));
+    if (headerIndex === -1) throw new Error('ไม่พบหัวตาราง Code / Product name');
+
+    const { cols, missing } = resolveMetalCols(rows, headerIndex);
+    const pumpStart = Math.max(...cols.map(c => c.col)) + 1;
+    const newDatabase = [];
+    let lastCode = '', lastName = '';
+
+    rows.slice(headerIndex + 1).forEach(row => {
+      let code = cleanText(row[1]), name = cleanText(row[2]);
+      if (code) lastCode = code; else code = lastCode;
+      if (name) lastName = name; else name = lastName;
+      if (!code || !name) return;
+
+      let pump = '';
+      for (let i = pumpStart; i < row.length; i++) {
+        const val = cleanText(row[i]);
+        if (val && !val.match(/^[\d.,\-\s]+$/)) { pump = val; break; }
+      }
+      if (!pump) pump = 'ปั๊มทั่วไป / ไม่ระบุ';
+
+      const metals = {};
+      cols.forEach(m => addMetal(metals, m.name, row[m.col]));
+      if (Object.keys(metals).length === 0) return;
+      newDatabase.push({ code, name, pump, metals });
+    });
+    if (newDatabase.length === 0) throw new Error('ไม่พบรายการ BOM');
+
+    bomDatabase = newDatabase;
+    if (missing.length) {
+      status.textContent = `โหลด ${bomDatabase.length.toLocaleString('th-TH')} รายการ แต่ไม่พบรหัสในหัวตาราง (ใช้ตำแหน่งเดิม): ${missing.join(', ')}`;
+      status.className = 'text-xs font-bold text-amber-600';
+    } else {
+      status.textContent = `เชื่อมต่อสำเร็จ ${bomDatabase.length.toLocaleString('th-TH')} รายการ`;
+      status.className = 'text-xs font-bold text-emerald-600';
+    }
+    bomDatabase.push(makeAdjustJob());
+    searchBom();
+    renderPlan();
+    renderHistoryList();   // นับเสร็จ/ยังไม่เสร็จใหม่เมื่อ BOM โหลดเสร็จ
+  } catch (error) {
+    console.error(error);
+    status.textContent = 'โหลดข้อมูลไม่สำเร็จ';
+    status.className = 'text-xs font-bold text-red-600';
+  }
+  isLoadingBom = false;
+}
+
+function parseCSV(text) {
+  const rows = []; let row = [], value = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i + 1];
+    if (c === '"' && q && n === '"') { value += '"'; i++; continue; }
+    if (c === '"') { q = !q; continue; }
+    if (c === ',' && !q) { row.push(value); value = ''; continue; }
+    if ((c === '\n' || c === '\r') && !q) {
+      if (c === '\r' && n === '\n') i++;
+      row.push(value); value = '';
+      if (row.some(x => x.trim() !== '')) rows.push(row);
+      row = []; continue;
+    }
+    value += c;
+  }
+  if (value !== '' || row.length > 0) { row.push(value); if (row.some(x => x.trim() !== '')) rows.push(row); }
+  return rows;
+}
+
+// ===== นำทาง / ค้นหา =====
+function openBomSheet() { loadHistory(); document.getElementById('pageBom').classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('pageBom').scrollTop = 0; }
+function closeBomSheet() { document.getElementById('pageBom').classList.add('hidden'); document.body.style.overflow = ''; }
+
+function switchTab(tab) {
+  if (window.event) { window.event.preventDefault(); window.event.stopPropagation(); }
+  const map = {
+    plan: ['pagePlan', 'tabPlan'], calc: ['pageCalc', 'tabCalc'], stock: ['pageStock', 'tabStock'],
+    history: ['pageHistory', 'tabHistory'], cut: ['pageCut', 'tabCut']
+  };
+  Object.keys(map).forEach(k => {
+    document.getElementById(map[k][0]).classList.toggle('active', k === tab);
+    document.getElementById(map[k][1]).classList.toggle('nav-active', k === tab);
+  });
+  closeBomSheet();
+  window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  if (tab === 'stock') loadStock();
+  if (tab === 'plan' && !planEditing) { loadPlan(); loadUnits(); loadHistory(); }
+  if (tab === 'history') {
+    historyFilter = 'done';   // every time we enter the history page, start on "เสร็จ"
+    if (!historyDateInited) { document.getElementById('historyDateFilter').value = todayStr(); historyDateInited = true; }
+    initHistoryMonthFilter();
+    showHistoryList(); loadHistory();
+  }
+  if (tab === 'cut' && !cutLoaded) loadCutData();
+}
+let historyDateInited = false;
+function setHistoryDateToday() { document.getElementById('historyDateFilter').value = todayStr(); renderHistoryList(); }
+function setHistoryDateAll() { document.getElementById('historyDateFilter').value = ''; renderHistoryList(); }
+function historyDateStr(j) {
+  const m = String(j.time || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+function searchBom() {
+  const kw = document.getElementById('searchCode').value.trim().toLowerCase();
+  const sel = document.getElementById('selectProduct');
+  const pumpBox = document.getElementById('pumpSelectBox'), card = document.getElementById('bomResultCard');
+  sel.innerHTML = '<option value="">-- เลือกรหัสงาน / ชื่อสินค้า --</option>';
+  if (!kw) { pumpBox.classList.add('hidden'); card.classList.add('hidden'); return; }
+  const uniq = new Map();
+  bomDatabase.filter(i => i.code.toLowerCase().includes(kw) || i.name.toLowerCase().includes(kw) || i.pump.toLowerCase().includes(kw))
+    .forEach(i => { const k = `${i.code}||${i.name}`; if (!uniq.has(k)) uniq.set(k, i); });
+  uniq.forEach(i => {
+    const o = document.createElement('option');
+    o.value = i.code + '||' + i.name; o.textContent = `${i.code} - ${i.name}`;
+    sel.appendChild(o);
+  });
+  if (uniq.size > 0) { sel.selectedIndex = 1; loadPumpOptions(); }
+  else { pumpBox.classList.add('hidden'); card.classList.add('hidden'); }
+}
+
+function loadPumpOptions() {
+  const v = document.getElementById('selectProduct').value;
+  const selPump = document.getElementById('selectPump'), pumpBox = document.getElementById('pumpSelectBox'), card = document.getElementById('bomResultCard');
+  if (!v) { pumpBox.classList.add('hidden'); card.classList.add('hidden'); return; }
+  const sp = v.split('||'), code = sp[0], name = sp.slice(1).join('||');
+  const items = bomDatabase.filter(x => x.code === code && x.name === name);
+  selPump.innerHTML = '<option value="">-- เลือกปั๊ม --</option>';
+  items.forEach(i => { const o = document.createElement('option'); o.value = i.pump; o.textContent = `ปั๊ม: ${i.pump}`; selPump.appendChild(o); });
+  pumpBox.classList.remove('hidden');
+  if (items.length === 1) { selPump.selectedIndex = 1; previewMetalList(); }
+  else { selPump.selectedIndex = 0; card.classList.add('hidden'); }
+}
+
+function previewMetalList() {
+  const pv = document.getElementById('selectProduct').value, pp = document.getElementById('selectPump').value;
+  const card = document.getElementById('bomResultCard'), box = document.getElementById('previewMetalList');
+  if (!pv || !pp) { card.classList.add('hidden'); return; }
+  const sp = pv.split('||'), code = sp[0], name = sp.slice(1).join('||');
+  const item = bomDatabase.find(x => x.code === code && x.name === name && x.pump === pp);
+  if (!item) return;
+  currentActiveJob = item;
+  const keys = Object.keys(item.metals || {});
+  document.getElementById('previewCount').textContent = `${keys.length} รายการ`;
+  box.innerHTML = '';
+  keys.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'flex justify-between items-center py-1 border-b border-indigo-100/60';
+    d.innerHTML = `<span class="font-bold text-slate-700">${esc(m)}</span><span class="font-extrabold text-indigo-700">BOM: ${formatNum(item.metals[m])} ซม.</span>`;
+    box.appendChild(d);
+  });
+  card.classList.remove('hidden');
+}
+
+let mergeTarget = null;   // งานเดิมที่เลือก "เพิ่มเข้า" ({id, month, time, items:[{name}]})
+let planQtyLock = false;   // ล็อคช่องจำนวนผลิตเมื่อเปิดงานมาจากแท็บแผนงาน (จำนวนตามแผน)
+function updateMergeInfo() {
+  const el = document.getElementById('mergeInfo');
+  const q = document.getElementById('globalQty');
+  const lock = !!mergeTarget || planQtyLock;
+  q.readOnly = lock;
+  q.classList.toggle('bg-slate-100', lock);
+  q.classList.toggle('text-slate-500', lock);
+  if (!mergeTarget) { el.classList.add('hidden'); el.textContent = ''; return; }
+  el.innerHTML = '<i class="fa-solid fa-link"></i> เพิ่มเข้างานเดิม ' + esc(mergeTarget.time || '') + ' · ตัดแล้ว: ' + esc((mergeTarget.items || []).map(i => i.name).join(', '));
+  el.classList.remove('hidden');
+}
+
+async function applyJobToCalculator(planQty) {
+  if (!currentActiveJob) return;
+  const job = currentActiveJob;
+  mergeTarget = null;
+  planQtyLock = Number(planQty) > 0;
+  document.getElementById('selectedJobTitle').textContent = `${job.code} - ${job.name}`;
+  document.getElementById('selectedJobPump').textContent = `ปั๊ม: ${job.pump}`;
+  document.getElementById('jobNoteInput').value = '';
+  setAdjustMode(job.code === 'ADJUST');
+  switchTab('calc');
+  let metals = job.metals;
+  if (job.code !== 'ADJUST') {
+    const cands = historyJobs.filter(h => !h.cancelled && h.jobCode === job.code && h.pump === job.pump
+      && Object.keys(job.metals).some(m => !(h.items || []).some(it => it.name === m)));
+    if (cands.length) {
+      const node = document.createElement('select');
+      node.className = 'w-full p-2 border-2 border-indigo-300 rounded-lg font-bold text-xs bg-white';
+      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'สร้างงานใหม่'; node.appendChild(o0);
+      cands.forEach(c => {
+        const o = document.createElement('option'); o.value = String(c.id);
+        o.textContent = `เพิ่มเข้างานเดิม ${c.time} · เดือน ${c.month || '-'} · ตัดแล้ว: ${(c.items || []).map(i => i.name).join(', ')}`;
+        node.appendChild(o);
+      });
+      const ok = await uiDialog('งานนี้เคยตัดสต็อกไปแล้ว\nจะสร้างงานใหม่ หรือเพิ่มเข้างานเดิม?', true, node);
+      if (ok && node.value) {
+        mergeTarget = cands.find(c => String(c.id) === node.value) || null;
+        if (mergeTarget) {
+          if (Number(mergeTarget.qty) > 0) document.getElementById('globalQty').value = Number(mergeTarget.qty);
+          const done = new Set((mergeTarget.items || []).map(i => i.name));
+          metals = {};
+          Object.keys(job.metals).forEach(m => { if (!done.has(m)) metals[m] = job.metals[m]; });
+        }
+      }
+    }
+  }
+  if (!mergeTarget && Number(planQty) > 0) document.getElementById('globalQty').value = Number(planQty);
+  updateMergeInfo();
+  renderMetalCalcRows(metals);
+}
+
+// ===== เครื่องคิดเลข =====
+function openCalculatorModal(inputElement, title) {
+  const existing = document.getElementById('calcModal');
+  if (existing) existing.remove();
+
+  const ov = document.createElement('div');
+  ov.id = 'calcModal';
+  ov.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4';
+  ov.style.zIndex = '100000';
+
+  let currentVal = inputElement.value || '0';
+
+  ov.innerHTML = `
+    <div class="bg-white rounded-2xl p-4 w-full max-w-xs space-y-3 shadow-xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <span class="font-bold text-sm text-indigo-950"><i class="fa-solid fa-calculator text-indigo-600"></i> ${title}</span>
+        <button type="button" id="closeCalcBtn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold">&times;</button>
+      </div>
+      <div id="calcDisplay" class="w-full h-14 bg-slate-100 border border-slate-300 rounded-xl flex items-center justify-end px-3 text-2xl font-extrabold text-slate-900 overflow-x-auto">${currentVal}</div>
+      <div class="grid grid-cols-4 gap-2">
+        <button type="button" data-val="C" class="p-3 bg-rose-100 text-rose-800 font-bold rounded-xl text-lg">C</button>
+        <button type="button" data-val="DEL" class="p-3 bg-slate-200 text-slate-700 font-bold rounded-xl text-base"><i class="fa-solid fa-delete-left"></i></button>
+        <button type="button" data-val="/" class="p-3 bg-indigo-100 text-indigo-800 font-bold rounded-xl text-lg">÷</button>
+        <button type="button" data-val="*" class="p-3 bg-indigo-100 text-indigo-800 font-bold rounded-xl text-lg">×</button>
+        <button type="button" data-val="7" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">7</button>
+        <button type="button" data-val="8" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">8</button>
+        <button type="button" data-val="9" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">9</button>
+        <button type="button" data-val="-" class="p-3 bg-indigo-100 text-indigo-800 font-bold rounded-xl text-lg">-</button>
+        <button type="button" data-val="4" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">4</button>
+        <button type="button" data-val="5" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">5</button>
+        <button type="button" data-val="6" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">6</button>
+        <button type="button" data-val="+" class="p-3 bg-indigo-100 text-indigo-800 font-bold rounded-xl text-lg">+</button>
+        <button type="button" data-val="1" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">1</button>
+        <button type="button" data-val="2" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">2</button>
+        <button type="button" data-val="3" class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">3</button>
+        <button type="button" data-val="=" class="row-span-2 p-3 bg-indigo-600 text-white font-bold rounded-xl text-lg flex items-center justify-center">=</button>
+        <button type="button" data-val="0" class="col-span-2 p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">0</button>
+        <button type="button" data-val="." class="p-3 bg-slate-100 text-slate-800 font-bold rounded-xl text-lg">.</button>
+      </div>
+      <button type="button" id="confirmCalcBtn" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-check"></i> ตกลง</button>
+    </div>
+  `;
+
+  document.body.appendChild(ov);
+
+  const display = ov.querySelector('#calcDisplay');
+  let expression = currentVal === '0' ? '' : currentVal;
+
+  function updateDisplay() {
+    display.textContent = expression === '' ? '0' : expression;
+  }
+
+  ov.querySelectorAll('button[data-val]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.val;
+      if (val === 'C') {
+        expression = '';
+      } else if (val === 'DEL') {
+        expression = expression.slice(0, -1);
+      } else if (val === '=') {
+        try {
+          let result = eval(expression.replace(/×/g, '*').replace(/÷/g, '/'));
+          expression = String(result);
+        } catch (e) {
+          expression = 'Error';
+        }
+      } else {
+        if (expression === '0' && !isNaN(val)) expression = '';
+        expression += val;
+      }
+      updateDisplay();
+    });
+  });
+
+  ov.querySelector('#closeCalcBtn').addEventListener('click', () => ov.remove());
+  ov.querySelector('#confirmCalcBtn').addEventListener('click', () => {
+    try {
+      let finalVal = expression !== '' ? eval(expression.replace(/×/g, '*').replace(/÷/g, '/')) : 0;
+      if (isNaN(finalVal)) finalVal = 0;
+      inputElement.value = finalVal;
+      calculateRow(inputElement.closest('.metal-card'));
+    } catch (e) {
+      inputElement.value = 0;
+    }
+    ov.remove();
+  });
+}
+
+// ===== การ์ดเหล็ก =====
+const EMPTY_CALC = '<div class="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl">ยังไม่มีรายการเหล็ก<br>กดปุ่ม "เปลี่ยนงาน" ด้านบนเพื่อเลือกงาน<br><button type="button" onclick="openBomSheet()" class="mt-3 px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">เลือกงาน</button></div>';
+document.getElementById('metalCalcContainer').innerHTML = EMPTY_CALC;
+
+function metalIcon(name) {
+  const n = String(name || '');
+  const svg = (shape, inner) => '<svg data-shape="' + shape + '" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="display:inline-block;vertical-align:-3px;color:#4f46e5">' + inner + '</svg>';
+  if (/^ML/i.test(n)) return svg('sheet', '<rect x="1.5" y="10.25" width="21" height="3.5" rx="1" fill="currentColor"/>');
+  if (n.startsWith('แฟลตบาร์')) return svg('flat', '<polygon points="3,8 7,4 21,4 17,8" fill="currentColor" fill-opacity="0.5"/><polygon points="17,8 21,4 21,18 17,22" fill="currentColor" fill-opacity="0.75"/><rect x="3" y="8" width="14" height="14" fill="currentColor"/>');
+  if (n.startsWith('ฉาก')) return svg('angle', '<path d="M3 17.5L12 8.5L21 17.5" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="miter" stroke-miterlimit="10"/>');
+  if (n.startsWith('กล่อง')) {
+    return /\d\s*x\s*\d/i.test(n)
+      ? svg('box-wide', '<rect x="2.5" y="6" width="19" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="3"/>')
+      : svg('box', '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="3"/>');
+  }
+  return '<i class="fa-solid fa-layer-group text-indigo-600"></i>';
+}
+
+function renderMetalCalcRows(metals) {
+  const c = document.getElementById('metalCalcContainer');
+  c.innerHTML = '';
+  const keys = Object.keys(metals || {});
+  document.getElementById('metalCountBadge').textContent = `${keys.length} รายการ`;
+  if (!keys.length) { c.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl">ไม่พบค่า BOM สเตนเลสในงานนี้</div>'; return; }
+
+  keys.forEach(metalName => {
+    const bomVal = metals[metalName];
+    const card = document.createElement('div');
+    card.className = 'metal-card p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-sm';
+    card.dataset.bom = bomVal; card.dataset.metal = metalName;
+    card.innerHTML = `
+      <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+        <span class="font-extrabold text-lg text-indigo-950">${metalIcon(metalName)} ${esc(metalName)}</span>
+        <span class="text-sm font-bold text-slate-500">BOM: <span class="text-indigo-700 font-extrabold text-lg">${formatNum(bomVal)}</span> ซม.</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-indigo-100/70 py-2 rounded-xl border border-indigo-200 text-center"><div class="text-xs font-bold text-indigo-800">Partlist (ซม.)</div><div class="partlist-val text-2xl font-extrabold text-indigo-900 truncate px-1">0</div></div>
+        <div class="bg-lime-100/70 py-2 rounded-xl border border-lime-300 text-center"><div class="text-xs font-bold text-lime-800">ใช้จริง (ซม.)</div><div class="used-val text-2xl font-extrabold text-lime-900 truncate px-1">0</div></div>
+        <div class="bg-white p-1.5 rounded-xl border-2 border-purple-300"><div class="text-xs font-bold text-purple-700 text-center">เบิก (ซม.)</div>
+          <input type="number" inputmode="decimal" placeholder="0" readonly onclick="openCalculatorModal(this, 'คำนวณเบิก: ${esc(metalName)}')" oninput="calculateRow(this.closest('.metal-card'))" class="withdraw-input w-full h-12 text-center text-2xl font-extrabold text-purple-900 focus:outline-none focus:bg-purple-50 rounded-lg cursor-pointer"></div>
+        <div class="bg-white p-1.5 rounded-xl border-2 border-amber-300"><div class="text-xs font-bold text-amber-700 text-center">คืน (ซม.)</div>
+          <input type="number" inputmode="decimal" placeholder="0" readonly onclick="openCalculatorModal(this, 'คำนวณคืน: ${esc(metalName)}')" oninput="calculateRow(this.closest('.metal-card'))" class="return-input w-full h-12 text-center text-2xl font-extrabold text-amber-900 focus:outline-none focus:bg-amber-50 rounded-lg cursor-pointer"></div>
+        <div class="scrap-box col-span-2 bg-white p-1.5 rounded-xl border-2 border-slate-300"><div class="text-xs font-bold text-slate-600 text-center">เศษทิ้ง (ซม.) <span class="font-normal text-slate-400">· บันทึกอย่างเดียว ไม่ตัดสต็อก</span></div>
+          <input type="number" inputmode="decimal" placeholder="0" readonly onclick="openCalculatorModal(this, 'คำนวณเศษทิ้ง: ${esc(metalName)}')" class="scrap-input w-full h-10 text-center text-xl font-extrabold text-slate-800 focus:outline-none focus:bg-slate-50 rounded-lg cursor-pointer"></div>
+      </div>
+      <div class="status-banner flex justify-between items-center px-3 py-2 bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold">
+        <span class="diff-text text-slate-700">ถ่ายรูป/ส่วนต่าง: 0</span><span class="status-text text-slate-700">พร้อมคำนวณ</span>
+      </div>`;
+    c.appendChild(card);
+  });
+  calculateAllRows();
+  loadStock();
+}
+
+function calculateRow(card) {
+  if (!card) return;
+  const bom = parseFloat(card.dataset.bom) || 0;
+  const qv = document.getElementById('globalQty').value;
+  const qty = (qv === '' || isNaN(qv)) ? 0 : parseFloat(qv);
+  const wi = card.querySelector('.withdraw-input'), ri = card.querySelector('.return-input');
+  const w = wi.value !== '' ? parseFloat(wi.value) : 0, r = ri.value !== '' ? parseFloat(ri.value) : 0;
+  const partlist = bom * qty, used = w - r, diff = used - partlist;
+  const pct = partlist > 0 ? (diff / partlist) * 100 : 0;
+  card.querySelector('.partlist-val').textContent = formatNum(partlist);
+  card.querySelector('.used-val').textContent = formatNum(used);
+  const banner = card.querySelector('.status-banner'), st = card.querySelector('.status-text');
+  card.querySelector('.diff-text').textContent = `ถ่ายรูป : ${diff > 0 ? '+' : ''}${formatNum(diff)} ซม.`;
+  const base = 'status-banner flex justify-between items-center px-3 py-2 border rounded-lg text-xs font-bold ';
+  if (wi.value.trim() !== '' || ri.value.trim() !== '') {
+    if (diff > 0) { st.textContent = partlist > 0 ? `+${formatNum(pct)}%` : '-'; banner.className = base + 'bg-rose-100 border-rose-300 text-rose-800'; }
+    else if (diff < 0) { st.textContent = partlist > 0 ? `${formatNum(pct)}%` : '-'; banner.className = base + 'bg-sky-100 border-sky-300 text-sky-800'; }
+    else { st.textContent = '0%'; banner.className = base + 'bg-emerald-100 border-emerald-300 text-emerald-800'; }
+  } else { st.textContent = 'ยังไม่เบิก'; banner.className = base + 'bg-slate-200 border-slate-300 text-slate-700'; }
+}
+function calculateAllRows() { document.querySelectorAll('#metalCalcContainer .metal-card').forEach(calculateRow); }
+function resetCalcForm() { document.querySelectorAll('.withdraw-input,.return-input,.scrap-input').forEach(i => i.value = ''); calculateAllRows(); }
+
+// ===== สต็อก =====
+async function loadStock() {
+  try {
+    const r = await fetch(`${STOCK_API}?token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
+    const j = await r.json();
+    if (j.ok) { stockMap = j.stock; stockLoadedAt = new Date(); }
+  } catch (e) { console.error('โหลดสต็อกไม่สำเร็จ', e); }
+  refreshStockBadges(); renderStockTable();
+}
+
+function renderStockTable() {
+  const body = document.getElementById('stockTableBody');
+  if (!body) return;
+  body.innerHTML = METAL_COLS.map((m, i) => {
+    const q = stockMap[m.code];
+    const out = q !== undefined && q <= 0;
+    const txt = q === undefined ? '-' : formatNum(q);
+    return `<tr class="${out ? 'bg-rose-100' : i % 2 ? 'bg-slate-50' : 'bg-white'}">
+      <td class="py-1.5 px-2 font-bold ${out ? 'text-rose-800' : 'text-slate-800'}">${esc(m.name)}${out ? ' <span class="ml-1 text-[10px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full">หมด</span>' : ''}</td>
+      <td class="py-1.5 px-2 text-[11px] font-semibold text-slate-400">${esc(m.code)}</td>
+      <td class="py-1.5 px-2 text-right font-extrabold ${out ? 'text-rose-700' : 'text-slate-900'}">${txt}</td></tr>`;
+  }).join('');
+  const up = document.getElementById('stockUpdated');
+  if (up) up.textContent = stockLoadedAt ? 'อัปเดต ' + stockLoadedAt.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }) : 'กำลังโหลด...';
+}
+
+function refreshStockBadges() {
+  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+    const code = METAL_CODE[card.dataset.metal];
+    let badge = card.querySelector('.stock-badge');
+    if (!badge) { badge = document.createElement('div'); card.firstElementChild.after(badge); }
+    const q = stockMap[code];
+    if (code && q !== undefined) {
+      const out = q <= 0;
+      badge.className = 'stock-badge text-[11px] font-bold text-right ' + (out ? 'text-white bg-rose-600 rounded-lg px-2 py-1 text-center' : 'text-slate-500');
+      badge.textContent = out ? `สต็อกหมด (คงเหลือ ${formatNum(q)} ซม.)` : `สต็อกคงเหลือ: ${formatNum(q)} ซม.`;
+    } else { badge.className = 'stock-badge text-[11px] font-bold text-slate-500 text-right'; badge.textContent = 'สต็อก: ไม่พบรหัส'; }
+  });
+}
+
+// ===== กล่องข้อความ =====
+function uiDialog(text, withCancel, node) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4';
+    ov.style.zIndex = '100000';
+    ov.innerHTML = '<div class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3 shadow-xl"><div class="msg text-sm font-bold text-slate-800" style="white-space:pre-line"></div><div class="flex gap-2">' +
+      (withCancel ? '<button data-v="0" class="flex-1 py-2 bg-slate-200 rounded-lg font-bold text-sm">ยกเลิก</button>' : '') +
+      '<button data-v="1" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm">ตกลง</button></div></div>';
+    ov.querySelector('.msg').textContent = text;
+    if (node) ov.querySelector('.msg').after(node);
+    ov.addEventListener('click', e => {
+      const v = e.target.dataset && e.target.dataset.v;
+      if (v === undefined) return;
+      ov.remove(); resolve(v === '1');
+    });
+    document.body.appendChild(ov);
+  });
+}
+const uiAlert = t => uiDialog(t, false);
+const uiConfirm = t => uiDialog(t, true);
+
+function makeNameInput() {
+  const i = document.createElement('input');
+  i.type = 'text'; i.value = getSavedName(); i.placeholder = 'ชื่อผู้ทำรายการ (จำเป็น)';
+  i.className = 'w-full p-2 mb-2 border-2 border-indigo-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  return i;
+}
+
+async function uiConfirmTable(items, cands) {
+  const wrap = document.createElement('div');
+  wrap.className = 'max-h-72 overflow-y-auto';
+  const nameIn = makeNameInput();
+  wrap.appendChild(nameIn);
+  let mergeSel = null;
+  if (cands && cands.length) {
+    const box = document.createElement('div');
+    box.className = 'mb-2 p-2 bg-amber-50 border border-amber-300 rounded-lg';
+    box.innerHTML = '<div class="text-[11px] font-bold text-amber-800 mb-1"><i class="fa-solid fa-link"></i> เคยตัดงานนี้ (เหล็กคนละประเภท) ไปแล้ว ต้องการรวมการ์ดไหม?</div>';
+    mergeSel = document.createElement('select');
+    mergeSel.className = 'w-full p-1.5 border border-amber-300 rounded-lg text-xs font-bold bg-white';
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'ไม่รวม (สร้างการ์ดใหม่)'; mergeSel.appendChild(o0);
+    cands.forEach(c => {
+      const o = document.createElement('option'); o.value = String(c.id);
+      o.textContent = `รวมกับ ${c.time} · เดือน ${c.month || '-'} · ตัดแล้ว: ${(c.items || []).map(i => i.name).join(', ')}`;
+      mergeSel.appendChild(o);
+    });
+    box.appendChild(mergeSel); wrap.appendChild(box);
+  }
+  const t = document.createElement('table');
+  t.className = 'w-full text-xs';
+  const head = t.createTHead().insertRow();
+  ['รายการ (ซม.)', 'เบิก', 'คืน', 'สต็อกหลังตัด'].forEach((h, i) => {
+    const th = document.createElement('th');
+    th.textContent = h; th.className = 'py-1 px-1 font-bold text-slate-500 border-b ' + (i ? 'text-right' : 'text-left');
+    head.appendChild(th);
+  });
+  const body = t.createTBody();
+  items.forEach(it => {
+    const before = stockMap[it.code];
+    const after = before === undefined ? null : before - (it.withdraw - it.ret);
+    const tr = body.insertRow();
+    tr.className = 'border-b border-slate-100';
+    [[it.name, 'text-left font-bold text-slate-800'],
+     [it.withdraw ? formatNum(it.withdraw) : '-', 'text-right text-purple-700 font-bold'],
+     [it.ret ? formatNum(it.ret) : '-', 'text-right text-amber-700 font-bold'],
+     [after === null ? '?' : formatNum(after), 'text-right font-extrabold ' + (after !== null && after < 0 ? 'text-red-600' : 'text-slate-800')]
+    ].forEach(([txt, cls]) => { const td = tr.insertCell(); td.textContent = txt; td.className = 'py-1.5 px-1 ' + cls; });
+  });
+  wrap.appendChild(t);
+  const ok = await uiDialog('ยืนยันตัดสต็อก?', true, wrap);
+  if (!ok) return null;
+  const name = nameIn.value.trim();
+  if (name) saveName(name);
+  return { name, mergeId: mergeSel ? mergeSel.value : '' };
+}
+
+
+// ===== popup กำลังทำงาน =====
+let busyCount = 0;
+function showBusy(msg) {
+  busyCount++;
+  let ov = document.getElementById('busyOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'busyOverlay';
+    ov.innerHTML = '<div class="busy-card"><div class="busy-ring"><div class="busy-ico"><i class="fa-solid fa-warehouse"></i></div></div>' +
+      '<div class="busy-text"><span class="busy-msg"></span><span class="busy-dots"><span>.</span><span>.</span><span>.</span></span></div>' +
+      '<div class="busy-sub">กรุณารอสักครู่ อย่าปิดหน้านี้</div></div>';
+    document.body.appendChild(ov);
+  }
+  ov.querySelector('.busy-msg').textContent = msg || 'กำลังทำงาน';
+}
+function hideBusy() {
+  busyCount = 0;
+  const ov = document.getElementById('busyOverlay');
+  if (ov) ov.remove();
+}
+
+async function postApi(payload) {
+  const res = await fetch(STOCK_API, { method: 'POST', body: JSON.stringify(Object.assign({ token: STOCK_TOKEN }, payload)) });
+  return res.json();
+}
+
+async function commitStock() {
+  if (!currentActiveJob) return uiAlert('ยังไม่ได้เลือกงาน');
+  const qty = parseFloat(document.getElementById('globalQty').value) || 0;
+  const items = [];
+  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+    const w = card.querySelector('.withdraw-input').value.trim();
+    const r = card.querySelector('.return-input').value.trim();
+    const s = card.querySelector('.scrap-input').value.trim();
+    if (w === '' && r === '' && s === '') return;
+    items.push({ code: METAL_CODE[card.dataset.metal], name: card.dataset.metal, bom: parseFloat(card.dataset.bom) || 0,
+      withdraw: parseFloat(w) || 0, ret: parseFloat(r) || 0, scrap: parseFloat(s) || 0 });
+  });
+  if (items.length === 0) return uiAlert('ยังไม่ได้กรอกเบิก/คืน/เศษทิ้ง');
+  const isAdj = currentActiveJob.code === 'ADJUST';
+  const adjNote = (document.getElementById('adjustNote').value || '').trim();
+  if (isAdj && !adjNote) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
+
+  const jobNote = (document.getElementById('jobNoteInput').value || '').trim();
+  const r = await uiConfirmTable(items, null);
+  if (r === null) return;
+  const who = r.name;
+  if (!who) return uiAlert('กรุณาใส่ชื่อผู้ตัดสต็อก แล้วกดยืนยันใหม่');
+  const mergeJob = isAdj ? null : mergeTarget;
+  const newId = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
+  const groupId = mergeJob ? String(mergeJob.id) : newId();
+  const sendMonth = isAdj ? '' : (mergeJob && mergeJob.month ? String(mergeJob.month) : currentJobMonth);
+
+  if (!submitId) submitId = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
+  const btn = document.getElementById('btnCommit');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  showBusy('กำลังบันทึกการตัดสต็อก');
+  try {
+    const j = await postApi({ id: submitId, user: who, by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
+      pump: isAdj ? (adjNote || '-') : currentActiveJob.pump, qty: isAdj ? 0 : qty, items: items,
+      month: sendMonth, groupId: groupId, merge: !!mergeJob, note: isAdj ? '' : jobNote });
+    hideBusy();
+    if (j.ok) {
+      // ตัดเสร็จ -> ล้างงานออกจากหน้าคำนวณทันที (ไม่คาไว้)
+      loadHistory();
+      clearJobPanel();
+      loadStock();
+      await uiAlert('ตัดสต็อกเรียบร้อย');
+    } else await uiAlert('ไม่สำเร็จ:\n' + (j.message || j.error));
+  } catch (e) {
+    hideBusy();
+    await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')\nลองกดยืนยันอีกครั้ง ระบบกันตัดซ้ำให้');
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
+}
+
+// ===== แผนงาน =====
+const PLAN_SEED = { month: '11', rows: [
+  ['ตู้น้ำหยอดเหรียญ', '1307113', 50], ['ตู้น้ำหยอดเหรียญ', '1310116', 10], ['ตู้น้ำหยอดเหรียญ', '1310117', 5],
+  ['อุตสาหกรรม', '1307229', 22], ['อุตสาหกรรม', '1307230', 33], ['อุตสาหกรรม', '1307174', 40],
+  ['อุตสาหกรรม', '2807037', 10], ['อุตสาหกรรม', '2807038', 10], ['อุตสาหกรรม', '1307026', 5],
+  ['อุตสาหกรรม', '1307152', 5], ['อุตสาหกรรม', '1307155', 5], ['อุตสาหกรรม', '1307029', 5],
+  ['อุตสาหกรรม', '1307219', 5], ['อุตสาหกรรม', '1310093', 5], ['อุตสาหกรรม', '1307031', 5]
+] };
+// ยูนิตต่อ 1 เครื่อง ของแต่ละรหัสงาน (จากใบแผนผลิตอุตสาหกรรม คอลัมน์ @) — ยังไม่มีข้อมูลตู้น้ำหยอดเหรียญ 1307113/1310116/1310117
+const UNIT_SEED = { '1307174': 1, '1307155': 1, '1307029': 2, '1307031': 2, '1307229': 2, '2807037': 1, '2807038': 2,
+  '1307219': 2, '1307152': 2, '1307230': 1, '1307026': 1, '1310093': 5 };
+let unitMap = {};
+let planAll = [], planMonth = getCurrentJobMonth(), planEditing = false, planDraft = [], planLoaded = false;
+function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
+
+async function loadUnits() {
+  try {
+    const r = await fetch(`${STOCK_API}?action=units&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
+    const j = await r.json();
+    if (j.ok && j.units) { unitMap = j.units; if (!planEditing) renderPlan(); }
+  } catch (e) { console.error('โหลดยูนิตไม่สำเร็จ', e); }
+}
+async function saveUnits(rows) {
+  const list = rows.filter(r => r.code && Number(r.units) > 0 && unitMap[r.code] !== Number(r.units)).map(r => ({ code: String(r.code), units: Number(r.units) }));
+  if (!list.length) return true;
+  try {
+    const j = await postApi({ action: 'unitSave', rows: list });
+    if (!j.ok) { await uiAlert('บันทึกยูนิตไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
+    list.forEach(x => { unitMap[x.code] = x.units; });
+    return true;
+  } catch (e) { await uiAlert('บันทึกยูนิตไม่สำเร็จ (' + e.message + ')'); return false; }
+}
+async function importUnitSeed() {
+  if (!(await askPin('ใส่รหัสเพื่อนำเข้ายูนิตต่อเครื่องจากใบแผน'))) return;
+  showBusy('กำลังบันทึกยูนิตต่อเครื่อง');
+  const ok = await saveUnits(Object.keys(UNIT_SEED).map(c => ({ code: c, units: UNIT_SEED[c] })));
+  hideBusy();
+  if (ok) renderPlan();
+}
+
+function planRowsOf(m) { return planAll.filter(r => String(r.month) === String(m)); }
+function bomEntriesOf(code) { return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST'); }
+
+// ความคืบหน้า = จำนวนประเภทเหล็กใน BOM ที่ตัดแล้ว (จากประวัติ ไม่นับที่ยกเลิก ตามเดือนของแผน) / ประเภทเหล็กทั้งหมดของ BOM
+function planProgress(code, month) {
+  let best = null;
+  bomEntriesOf(code).forEach(e => {
+    const names = Object.keys(e.metals || {});
+    if (!names.length) return;
+    const cut = new Set();
+    historyJobs.forEach(h => {
+      if (h.cancelled || h.jobCode !== e.code || h.pump !== e.pump || String(h.month) !== String(month)) return;
+      (h.items || []).forEach(it => cut.add(it.name));
+    });
+    const n = names.filter(m => cut.has(m)).length;
+    const r = { pct: Math.round(n / names.length * 100), cut: n, total: names.length };
+    if (!best || r.pct > best.pct) best = r;
+  });
+  return best;
+}
+
+function initPlanMonthSelect() {
+  const sel = document.getElementById('planMonthSelect');
+  sel.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = `แผนเดือน ${m} (${TH_MONTHS[m]})`;
+    sel.appendChild(o);
+  }
+  sel.value = planMonth;
+}
+function onPlanMonthChange() { planMonth = document.getElementById('planMonthSelect').value; renderPlan(); }
+
+async function loadPlan() {
+  try {
+    const r = await fetch(`${STOCK_API}?action=plan&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.message || j.error);
+    planAll = j.plan || []; planLoaded = true;
+  } catch (e) {
+    document.getElementById('planStatus').textContent = 'โหลดแผนไม่สำเร็จ: ' + e.message;
+    return;
+  }
+  if (!planEditing) renderPlan();
+}
+function refreshPlan() { if (planEditing) return; loadPlan(); loadHistory(); }
+
+function renderPlan() {
+  const list = document.getElementById('planList'), foot = document.getElementById('planFooter');
+  if (!list) return;
+  document.getElementById('planMonthSelect').disabled = planEditing;
+  const rows = planEditing ? planDraft : planRowsOf(planMonth);
+  const bomLoaded = bomDatabase.length > 0;
+  const total = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
+  const totalUnits = rows.reduce((a, r) => a + (Number(r.qty) || 0) * unitPer(r), 0);
+  const noUnit = rows.filter(r => !(unitPer(r) > 0)).length;
+  document.getElementById('planStatus').innerHTML = !planLoaded ? 'กำลังโหลดแผน...'
+    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
+
+  const sections = [];
+  rows.forEach((r, i) => {
+    const nm = r.section || '';
+    let s = sections.find(x => x.name === nm);
+    if (!s) { s = { name: nm, items: [] }; sections.push(s); }
+    s.items.push({ r, i });
+  });
+
+  let html = '';
+  sections.forEach(sec => {
+    const sum = sec.items.reduce((a, x) => a + (Number(x.r.qty) || 0), 0);
+    const sumU = sec.items.reduce((a, x) => a + (Number(x.r.qty) || 0) * unitPer(x.r), 0);
+    const cols = planEditing ? ['7%', '21%', '28%', '16%', '16%', '12%'] : ['9%', '19%', '36%', '12%', '24%'];
+    const head = planEditing ? ['NO.', 'CODE', 'ชื่องาน', 'ตัว', '@ยูนิต', ''] : ['NO.', 'CODE', 'ชื่องาน', 'ตัว', 'คืบหน้า'];
+    html += `<div><div class="text-xs font-extrabold text-indigo-900 mb-1">${esc(sec.name || 'งาน')}</div>
+      <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
+      <colgroup>${cols.map(c => `<col style="width:${c}">`).join('')}</colgroup>
+      <thead><tr>${head.map(t => `<th>${t}</th>`).join('')}</tr></thead><tbody>`;
+    sec.items.forEach((x, n) => {
+      const r = x.r, i = x.i;
+      const entries = bomLoaded ? bomEntriesOf(r.code) : [];
+      const missing = bomLoaded && !entries.length;
+      const nameCell = !bomLoaded ? '<span class="text-slate-400">กำลังโหลด BOM...</span>'
+        : missing ? '<span class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบรหัสนี้ใน BOM</span>'
+        : esc(entries[0].name);
+      if (planEditing) {
+        html += `<tr class="${missing ? 'bg-rose-50' : ''}"><td>${n + 1}</td>
+          <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-indigo-100 text-indigo-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button></td>
+          <td class="nm">${nameCell}</td>
+          <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" onchange="setPlanQty(${i}, this.value)" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
+          <td><input type="text" inputmode="numeric" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
+          <td><button type="button" onclick="removePlanRow(${i})" class="text-rose-600 text-base" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+      } else {
+        const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth);
+        const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
+        const prCell = pr ? `<div class="font-extrabold text-xs" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total} ประเภท</div><div class="plan-bar"><i style="width:${pr.pct}%;background:${col}"></i></div>` : '-';
+        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="openPlanJob(${i})"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
+          <td class="nm">${nameCell}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
+      }
+    });
+    html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1">รวม ${formatNum(sum)} ตัว · <span class="text-emerald-700">${formatNum(sumU)} ยูนิต</span></div>`;
+    if (planEditing) html += `<button type="button" data-s="${esc(sec.name)}" onclick="addPlanRow(this.dataset.s)" class="mt-1 w-full py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i> เพิ่มงานในหมวดนี้</button>`;
+    html += '</div>';
+  });
+
+  if (!rows.length) {
+    html = '<div class="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl">' +
+      (planLoaded ? `ยังไม่มีแผนของเดือน ${esc(planMonth)}` : 'กำลังโหลดแผน...') + '</div>';
+    if (planLoaded && !planEditing && String(planMonth) === PLAN_SEED.month) {
+      html += '<button type="button" onclick="importPlanSeed()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-file-import"></i> นำเข้าแผนเดือน 11 (จากรูปแผนเชื่อม)</button>';
+    }
+  }
+  if (planEditing) html += '<button type="button" onclick="addPlanSection()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-folder-plus"></i> เพิ่มหมวดใหม่</button>';
+  if (!planEditing && planLoaded && Object.keys(UNIT_SEED).some(c => unitMap[c] === undefined)) html += '<button type="button" onclick="importUnitSeed()" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl"><i class="fa-solid fa-cubes"></i> นำเข้ายูนิตต่อเครื่องจากใบแผน (12 รหัส)</button>';
+  if (!planEditing && planLoaded) html += '<button type="button" onclick="openPlanImport()" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-300 text-indigo-800 font-bold text-sm rounded-xl"><i class="fa-solid fa-camera"></i> เพิ่มงานจากรูปแผน / วางรายการ</button>';
+  list.innerHTML = html;
+
+  foot.innerHTML = planEditing
+    ? '<button type="button" onclick="cancelPlanEdit()" class="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-xl">ยกเลิก</button><button type="button" onclick="savePlanEdit()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-floppy-disk"></i> บันทึกแผน</button>'
+    : '<button type="button" onclick="startPlanEdit()" class="w-full py-3 bg-slate-700 hover:bg-slate-800 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen-to-square"></i> แก้ไข</button>';
+}
+
+async function askPin(msg) {
+  const pin = document.createElement('input');
+  pin.type = 'password'; pin.inputMode = 'numeric'; pin.autocomplete = 'off'; pin.placeholder = 'รหัสยืนยัน';
+  pin.className = 'w-full p-2 border-2 border-rose-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
+  if (!(await uiDialog(msg, true, pin))) return false;
+  if (pin.value.trim() !== CANCEL_PIN) { await uiAlert('รหัสไม่ถูกต้อง'); return false; }
+  return true;
+}
+
+async function startPlanEdit() {
+  if (!(await askPin('ใส่รหัสเพื่อแก้ไขแผนงาน'))) return;
+  planDraft = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0 }));
+  planEditing = true; renderPlan();
+}
+function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
+
+async function changePlanCode(i) {
+  const code = await pickBomCode();
+  if (code && planDraft[i]) { planDraft[i].code = code; planDraft[i].units = unitMap[code] || 0; renderPlan(); }
+}
+function setPlanQty(i, v) {
+  if (!planDraft[i]) return;
+  planDraft[i].qty = Math.max(0, parseFloat(String(v).replace(/,/g, '')) || 0);
+  renderPlan();
+}
+function setPlanUnits(i, v) {
+  if (!planDraft[i]) return;
+  planDraft[i].units = Math.max(0, parseFloat(String(v).replace(/,/g, '')) || 0);
+  renderPlan();
+}
+function removePlanRow(i) { planDraft.splice(i, 1); renderPlan(); }
+async function addPlanRow(section) {
+  const code = await pickBomCode();
+  if (!code) return;
+  planDraft.push({ section: section || '', code: code, qty: 1, units: unitMap[code] || 0 });
+  renderPlan();
+}
+async function addPlanSection() {
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'ชื่อหมวด เช่น แผนกอุตสาหกรรม';
+  inp.className = 'w-full p-2 border-2 border-indigo-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  if (!(await uiDialog('เพิ่มหมวดใหม่ในแผนเดือนนี้', true, inp))) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  await addPlanRow(name);
+}
+
+async function savePlanRows(month, rows) {
+  showBusy('กำลังบันทึกแผนงาน');
+  try {
+    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ section: r.section || '', code: String(r.code), qty: Number(r.qty) })) });
+    hideBusy();
+    if (!j.ok) { await uiAlert('บันทึกแผนไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
+    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty) })));
+    return true;
+  } catch (e) {
+    hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); return false;
+  }
+}
+async function savePlanEdit() {
+  if (planDraft.some(r => !(Number(r.qty) > 0))) return uiAlert('จำนวนต้องมากกว่า 0 ทุกบรรทัด');
+  const missing = bomDatabase.length ? planDraft.filter(r => !bomEntriesOf(r.code).length).map(r => r.code) : [];
+  if (missing.length && !(await uiConfirm('รหัสเหล่านี้ไม่พบใน BOM: ' + missing.join(', ') + '\nบันทึกต่อไหม?'))) return;
+  if (await savePlanRows(planMonth, planDraft)) { await saveUnits(planDraft); planEditing = false; planDraft = []; renderPlan(); }
+}
+async function importPlanSeed() {
+  if (!(await askPin('ใส่รหัสเพื่อนำเข้าแผนเดือน 11'))) return;
+  const rows = PLAN_SEED.rows.map(a => ({ section: a[0], code: a[1], qty: a[2] }));
+  if (await savePlanRows(PLAN_SEED.month, rows)) renderPlan();
+}
+
+// เปิดงานจากแผน -> ไปหน้าคำนวณ (จำนวนผลิตและเดือนงานตามแผน)
+async function openPlanJob(i) {
+  const r = planRowsOf(planMonth)[i];
+  if (!r) return;
+  if (!bomDatabase.length) return uiAlert('ยังโหลดข้อมูล BOM ไม่เสร็จ รอสักครู่แล้วลองใหม่');
+  const entries = bomEntriesOf(r.code);
+  if (!entries.length) return uiAlert(`ไม่พบรหัส ${r.code} ใน BOM\nกด "แก้ไข" เพื่อเปลี่ยนรหัสในแผน`);
+  let entry = entries[0];
+  if (entries.length > 1) {
+    const sel = document.createElement('select');
+    sel.className = 'w-full p-2 border-2 border-indigo-300 rounded-lg font-bold text-xs bg-white';
+    entries.forEach(e => { const o = document.createElement('option'); o.textContent = `ปั๊ม: ${e.pump}`; sel.appendChild(o); });
+    if (!(await uiDialog(`งาน ${r.code} มีหลายปั๊ม เลือกปั๊ม`, true, sel))) return;
+    entry = entries[sel.selectedIndex];
+  }
+  currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
+  document.getElementById('jobMonthSelect').value = currentJobMonth;
+  currentActiveJob = entry;
+  applyJobToCalculator(Number(r.qty));
+}
+
+// ค้นหา/เลือกรหัสงานจาก BOM
+function pickBomCode() {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4';
+    ov.style.zIndex = '100000';
+    ov.innerHTML = '<div class="bg-white rounded-2xl p-3 w-full max-w-sm space-y-2 shadow-xl"><div class="flex justify-between items-center"><span class="font-bold text-sm text-indigo-950"><i class="fa-solid fa-magnifying-glass text-indigo-600"></i> เลือกรหัสงานจาก BOM</span><button type="button" data-c="1" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold">&times;</button></div><input type="text" placeholder="ค้นหารหัส / ชื่อสินค้า" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"><div class="res max-h-72 overflow-y-auto space-y-1"></div></div>';
+    const inp = ov.querySelector('input'), res = ov.querySelector('.res');
+    const draw = () => {
+      const kw = inp.value.trim().toLowerCase();
+      const seen = new Map();
+      bomDatabase.forEach(x => {
+        if (x.code === 'ADJUST') return;
+        if (kw && !(x.code.toLowerCase().includes(kw) || x.name.toLowerCase().includes(kw))) return;
+        if (!seen.has(x.code)) seen.set(x.code, x);
+      });
+      const arr = [...seen.values()].slice(0, 40);
+      res.innerHTML = arr.length
+        ? arr.map(x => `<button type="button" data-code="${esc(x.code)}" class="w-full text-left p-2 border border-slate-200 rounded-lg hover:bg-indigo-50"><div class="font-extrabold text-xs text-indigo-900">${esc(x.code)}</div><div class="text-[11px] font-semibold text-slate-600">${esc(x.name)}</div></button>`).join('')
+        : '<div class="text-center text-xs text-slate-400 py-4">ไม่พบรหัสนี้ใน BOM</div>';
+    };
+    inp.addEventListener('input', draw);
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-code]');
+      if (b) { ov.remove(); resolve(b.dataset.code); return; }
+      if (e.target.closest('[data-c]')) { ov.remove(); resolve(null); }
+    });
+    document.body.appendChild(ov);
+    draw();
+  });
+}
+
+// ===== นำเข้าแผนจากรูป / วางรายการ =====
+// แปลงข้อความ "รหัส จำนวน" ต่อบรรทัด -> แถวแผน (บรรทัดที่ไม่มีตัวเลขเลย = ชื่อหมวด)
+function parsePlanText(text) {
+  const rows = [], bad = [];
+  let section = '';
+  String(text || '').split(/\r?\n/).forEach(raw => {
+    const line = raw.replace(/[|,;\t]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!line) return;
+    if (!/\d/.test(line)) { section = line.replace(/[:：]$/, '').trim(); return; }
+    const toks = line.split(' ');
+    const ci = toks.findIndex(t => /^\d{5,}$/.test(t));
+    let qty = NaN;
+    const nums = [];
+    if (ci !== -1) {
+      for (let k = ci + 1; k < toks.length; k++) {
+        const t = toks[k].replace(/^[x×*@]/i, '');
+        if (/^\d+(\.\d+)?$/.test(t)) nums.push(parseFloat(t));
+      }
+      if (nums.length) qty = nums[0];
+    }
+    if (ci === -1 || !(qty > 0)) { bad.push(raw.trim()); return; }
+    // รูปแบบ "รหัส จำนวน @" หรือ "รหัส จำนวน ยูนิตรวม @" -> ตัวเลขสุดท้ายคือ @ (ยูนิตต่อเครื่อง)
+    const units = nums.length >= 2 ? nums[nums.length - 1] : undefined;
+    rows.push(units > 0 ? { section, code: toks[ci], qty, units } : { section, code: toks[ci], qty });
+  });
+  return { rows, bad };
+}
+
+function openPlanImport() {
+  const ov = document.createElement('div');
+  ov.className = 'fixed inset-0 bg-slate-100 overflow-y-auto';
+  ov.style.zIndex = '100000';
+  ov.innerHTML = `<div class="w-full max-w-lg mx-auto bg-white min-h-full p-3 space-y-3">
+    <div class="flex items-center justify-between sticky top-0 bg-white py-1" style="z-index:5">
+      <span class="font-extrabold text-base text-indigo-950"><i class="fa-solid fa-camera text-indigo-600"></i> นำเข้าแผนเดือน ${esc(planMonth)} (${esc(TH_MONTHS[parseInt(planMonth, 10)] || '')})</span>
+      <button type="button" data-x="1" class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 text-lg" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <label class="block w-full py-2 text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl cursor-pointer">
+      <i class="fa-solid fa-image"></i> เลือกรูปแผน (ไว้ดูเทียบขณะพิมพ์)
+      <input type="file" accept="image/*" class="hidden" data-file="1">
+    </label>
+    <div data-photo class="hidden space-y-1">
+      <div class="flex items-center justify-between text-[11px] font-bold text-slate-500"><span>ซูมรูปเพื่ออ่านรหัสและจำนวน</span>
+        <span class="flex gap-1"><button type="button" data-z="-1" class="w-8 h-7 bg-slate-200 rounded-md text-base">−</button><button type="button" data-z="1" class="w-8 h-7 bg-slate-200 rounded-md text-base">+</button></span></div>
+      <div class="overflow-auto border border-slate-300 rounded-xl bg-slate-50" style="max-height:38vh"><img data-img alt="รูปแผน" style="width:100%;max-width:none;display:block"></div>
+    </div>
+    <div data-edit class="space-y-2">
+      <div class="text-xs font-bold text-slate-700">พิมพ์หรือวางรายการ บรรทัดละ 1 งาน <span class="text-slate-400">(รหัส จำนวน หรือ รหัส จำนวน @ยูนิต)</span></div>
+      <textarea data-text rows="9" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ตู้น้ำหยอดเหรียญ&#10;1307113 50&#10;1310116 10&#10;อุตสาหกรรม&#10;1307229 22"></textarea>
+      <div class="text-[11px] font-semibold text-slate-500">บรรทัดที่ไม่มีตัวเลข = ชื่อหมวด · จะตรวจรหัสกับ BOM ให้ก่อนบันทึก</div>
+      <button type="button" data-check class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-list-check"></i> ตรวจรายการ</button>
+    </div>
+    <div data-preview class="hidden space-y-2"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  let url = null, zoom = 100, items = [];
+  const q = s => ov.querySelector(s);
+  const close = () => { if (url) URL.revokeObjectURL(url); ov.remove(); document.body.style.overflow = ''; };
+
+  q('[data-file]').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (url) URL.revokeObjectURL(url);
+    url = URL.createObjectURL(f);
+    q('[data-img]').src = url; zoom = 100; q('[data-img]').style.width = '100%';
+    q('[data-photo]').classList.remove('hidden');
+  });
+  ov.addEventListener('click', e => {
+    if (e.target.closest('[data-x]')) return close();
+    const z = e.target.closest('[data-z]');
+    if (z) { zoom = Math.min(500, Math.max(100, zoom + parseInt(z.dataset.z, 10) * 50)); q('[data-img]').style.width = zoom + '%'; }
+  });
+
+  function drawPreview(bad) {
+    const box = q('[data-preview]');
+    const hasBom = bomDatabase.length > 0;
+    const existing = planRowsOf(planMonth);
+    let html = `<div class="flex justify-between items-center"><span class="text-xs font-extrabold text-indigo-950">${items.length} งาน · รวม ${formatNum(items.reduce((a, r) => a + r.qty, 0))} ตัว</span>
+      <button type="button" data-back class="px-2.5 py-1 bg-slate-200 rounded-lg text-[11px] font-bold"><i class="fa-solid fa-pen"></i> แก้ข้อความ</button></div>`;
+    if (bad.length) html += `<div class="p-2 bg-amber-50 border border-amber-300 rounded-lg text-[11px] font-bold text-amber-800"><i class="fa-solid fa-triangle-exclamation"></i> อ่านบรรทัดเหล่านี้ไม่ได้ (ไม่มีรหัสหรือจำนวน): ${bad.map(esc).join(' | ')}</div>`;
+    html += '<div class="overflow-hidden rounded-xl border border-slate-300"><table class="plan-table"><colgroup><col style="width:24%"><col style="width:42%"><col style="width:22%"><col style="width:12%"></colgroup><thead><tr><th>CODE</th><th>ชื่องาน (จาก BOM)</th><th>ตัว</th><th></th></tr></thead><tbody>';
+    let lastSec = null;
+    items.forEach((r, i) => {
+      if (r.section !== lastSec) { html += `<tr><td colspan="4" class="font-extrabold text-indigo-900 bg-indigo-50" style="text-align:left">${esc(r.section || 'งาน')}</td></tr>`; lastSec = r.section; }
+      const en = hasBom ? bomEntriesOf(r.code) : [];
+      const miss = hasBom && !en.length;
+      const dup = existing.some(x => x.code === r.code);
+      html += `<tr class="${miss ? 'bg-rose-50' : ''}"><td class="font-bold">${esc(r.code)}</td>
+        <td class="nm">${!hasBom ? '<span class="text-slate-400">กำลังโหลด BOM...</span>' : miss ? '<span class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบรหัสนี้ใน BOM</span>' : esc(en[0].name)}${dup ? '<div class="text-[10px] text-amber-700 font-bold">มีในแผนเดือนนี้แล้ว</div>' : ''}${r.units ? `<div class="text-[10px] text-emerald-700 font-bold">@ ${esc(r.units)} ยูนิต/เครื่อง</div>` : ''}</td>
+        <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" data-q="${i}" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
+        <td><button type="button" data-del="${i}" class="text-rose-600 text-base" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+    });
+    html += `</tbody></table></div>
+      <select data-mode class="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs bg-white">
+        <option value="append">เพิ่มต่อท้ายแผนเดือนนี้ (รหัสซ้ำ = อัปเดตจำนวน)</option>
+        <option value="replace" ${existing.length ? '' : 'selected'}>แทนที่แผนทั้งเดือนนี้</option>
+      </select>
+      <button type="button" data-save class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-floppy-disk"></i> บันทึกเข้าแผนเดือน ${esc(planMonth)}</button>`;
+    box.innerHTML = html;
+  }
+
+  q('[data-check]').addEventListener('click', () => {
+    const { rows, bad } = parsePlanText(q('[data-text]').value);
+    if (!rows.length) return uiAlert('ยังไม่มีรายการที่อ่านได้\nพิมพ์เป็น "รหัส จำนวน" บรรทัดละ 1 งาน เช่น 1307113 50');
+    items = rows;
+    drawPreview(bad);
+    q('[data-edit]').classList.add('hidden');
+    q('[data-preview]').classList.remove('hidden');
+    ov.scrollTop = 0;
+    ov.dataset.bad = JSON.stringify(bad);
+  });
+
+  q('[data-preview]').addEventListener('click', async e => {
+    if (e.target.closest('[data-back]')) { q('[data-preview]').classList.add('hidden'); q('[data-edit]').classList.remove('hidden'); return; }
+    const del = e.target.closest('[data-del]');
+    if (del) { items.splice(parseInt(del.dataset.del, 10), 1); if (!items.length) { q('[data-preview]').classList.add('hidden'); q('[data-edit]').classList.remove('hidden'); } else drawPreview(JSON.parse(ov.dataset.bad || '[]')); return; }
+    if (e.target.closest('[data-save]')) {
+      if (items.some(r => !(r.qty > 0))) return uiAlert('จำนวนต้องมากกว่า 0 ทุกบรรทัด');
+      const missing = bomDatabase.length ? items.filter(r => !bomEntriesOf(r.code).length).map(r => r.code) : [];
+      if (missing.length && !(await uiConfirm('รหัสเหล่านี้ไม่พบใน BOM: ' + missing.join(', ') + '\nบันทึกต่อไหม?'))) return;
+      if (!(await askPin('ใส่รหัสเพื่อบันทึกแผนงาน'))) return;
+      let rowsOut;
+      if (q('[data-mode]').value === 'replace') rowsOut = items.map(r => ({ section: r.section, code: r.code, qty: r.qty }));
+      else {
+        rowsOut = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty }));
+        items.forEach(r => {
+          const k = rowsOut.findIndex(x => x.code === r.code);
+          if (k >= 0) rowsOut[k].qty = r.qty; else rowsOut.push({ section: r.section, code: r.code, qty: r.qty });
+        });
+      }
+      if (await savePlanRows(planMonth, rowsOut)) { await saveUnits(items); close(); renderPlan(); }
+    }
+  });
+  q('[data-preview]').addEventListener('change', e => {
+    const inp = e.target.closest('[data-q]');
+    if (!inp) return;
+    const v = parseFloat(String(inp.value).replace(/,/g, ''));
+    items[parseInt(inp.dataset.q, 10)].qty = v > 0 ? v : 0;
+    drawPreview(JSON.parse(ov.dataset.bad || '[]'));
+  });
+}
+
+// ===== คำนวณแบ่งสัดส่วนหลายงาน (ตัดรวมทีเดียว) =====
+// สัดส่วนของแต่ละโค้ด = (BOM รวมต่อชิ้น × จำนวนชิ้น) ÷ ผลรวมทั้งหมด แล้วแบ่ง เบิก/คืน/ทิ้ง ตามสัดส่วนนั้น
+let splitRows = [{ code: '', pcs: '' }];
+function toggleSplit() {
+  const box = document.getElementById('splitBox');
+  box.classList.toggle('hidden');
+  if (!box.classList.contains('hidden')) renderSplitRows();
+}
+function splitBomEntry(code) { return bomDatabase.find(x => x.code === String(code).trim() && x.code !== 'ADJUST'); }
+function splitCmEach(entry) { return Object.values(entry.metals || {}).reduce((a, v) => a + (Number(v) || 0), 0); }
+function splitNum(v) { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return isFinite(n) && n > 0 ? n : 0; }
+
+function renderSplitRows() {
+  const dl = document.getElementById('splitCodeList');
+  dl.innerHTML = '';
+  const seen = new Set();
+  bomDatabase.forEach(x => {
+    if (x.code === 'ADJUST' || seen.has(x.code)) return;
+    seen.add(x.code);
+    const o = document.createElement('option'); o.value = x.code; o.label = x.name; dl.appendChild(o);
+  });
+  document.getElementById('splitRows').innerHTML = splitRows.map((r, i) => `
+    <div class="flex gap-1.5 items-center">
+      <input type="text" list="splitCodeList" value="${esc(r.code)}" placeholder="รหัสงาน" oninput="splitRows[${i}].code=this.value" class="flex-1 min-w-0 p-2 border border-slate-300 rounded-lg font-bold text-sm bg-white">
+      <input type="number" inputmode="numeric" value="${esc(r.pcs)}" placeholder="ชิ้น" oninput="splitRows[${i}].pcs=this.value" class="w-20 p-2 text-center border border-slate-300 rounded-lg font-extrabold text-sm bg-white">
+      <button type="button" onclick="splitDelRow(${i})" class="w-10 h-10 rounded-lg bg-rose-100 text-rose-700" aria-label="ลบแถว"><i class="fa-solid fa-trash-can"></i></button>
+    </div>`).join('');
+}
+function splitAddRow() { splitRows.push({ code: '', pcs: '' }); renderSplitRows(); }
+function splitDelRow(i) {
+  splitRows.splice(i, 1);
+  if (!splitRows.length) splitRows.push({ code: '', pcs: '' });
+  renderSplitRows();
+}
+
+// แบ่งจำนวนเต็ม total ตามน้ำหนัก weights ให้ผลรวมเท่ากับ total เป๊ะ (วิธี largest remainder)
+function splitAllocate(total, weights) {
+  const W = weights.reduce((a, b) => a + b, 0);
+  const raw = weights.map(w => total * w / W);
+  const base = raw.map(Math.floor);
+  const rem = total - base.reduce((a, b) => a + b, 0);
+  raw.map((x, i) => ({ i, f: x - base[i] }))
+    .sort((a, b) => b.f - a.f)
+    .slice(0, Math.max(0, rem))
+    .forEach(o => { base[o.i]++; });
+  return base;
+}
+
+function splitCalc() {
+  const out = document.getElementById('splitResult');
+  const problems = [], lines = [], seen = new Set();
+  splitRows.forEach(r => {
+    const code = String(r.code || '').trim(), pcs = Math.round(splitNum(r.pcs));
+    if (!code && !pcs) return;
+    const e = splitBomEntry(code);
+    if (!e) { problems.push(`ไม่พบรหัส ${code || '(ว่าง)'} ใน BOM`); return; }
+    if (seen.has(code)) { problems.push(`รหัส ${code} ซ้ำในรายการ`); return; }
+    seen.add(code);
+    if (!pcs) { problems.push(`ใส่จำนวนชิ้นของ ${code}`); return; }
+    const each = splitCmEach(e);
+    if (!(each > 0)) { problems.push(`รหัส ${code} ไม่มีค่า BOM`); return; }
+    lines.push({ code, name: e.name, pcs, bom: each * pcs });
+  });
+  if (problems.length) {
+    out.innerHTML = `<div class="p-2 bg-rose-50 border border-rose-300 rounded-lg text-xs font-bold text-rose-800">${problems.map(esc).join('<br>')}</div>`;
+    return;
+  }
+  if (!lines.length) {
+    out.innerHTML = '<div class="text-xs font-bold text-slate-500 text-center py-2">ยังไม่มีรายการงาน</div>';
+    return;
+  }
+  const T = {
+    w: Math.round(splitNum(document.getElementById('splitW').value)),
+    r: Math.round(splitNum(document.getElementById('splitR').value)),
+    s: Math.round(splitNum(document.getElementById('splitS').value))
+  };
+  const weights = lines.map(l => l.bom);
+  const wd = splitAllocate(T.w, weights), rt = splitAllocate(T.r, weights), sc = splitAllocate(T.s, weights);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+
+  let html = `<div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
+    <colgroup><col style="width:24%"><col style="width:11%"><col style="width:17%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
+    <thead><tr><th>โค้ด</th><th>ชิ้น</th><th>BOM รวม</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
+  lines.forEach((l, i) => {
+    html += `<tr><td class="nm">${esc(l.code)}<div class="text-[10px] font-semibold text-slate-500">${esc(l.name)}</div></td>
+      <td class="font-bold">${formatNum(l.pcs)}</td>
+      <td>${formatNum(Math.round(l.bom))}</td>
+      <td class="font-extrabold text-purple-700">${formatNum(wd[i])}</td>
+      <td class="font-extrabold text-amber-700">${formatNum(rt[i])}</td>
+      <td class="font-extrabold text-slate-800">${formatNum(sc[i])}</td></tr>`;
+  });
+  html += `<tr class="bg-slate-100"><td class="nm font-extrabold">รวม</td><td class="font-extrabold">${formatNum(sum(lines.map(l => l.pcs)))}</td>
+    <td class="font-extrabold">${formatNum(Math.round(sum(lines.map(l => l.bom))))}</td>
+    <td class="font-extrabold text-purple-800">${formatNum(sum(wd))}</td><td class="font-extrabold text-amber-800">${formatNum(sum(rt))}</td><td class="font-extrabold text-slate-900">${formatNum(sum(sc))}</td></tr>`;
+  html += '</tbody></table></div><div class="text-[11px] font-semibold text-slate-500 mt-1">หน่วย ซม. · ปัดเป็นจำนวนเต็ม · ยอดรวมตรงกับที่กรอกเสมอ</div>';
+  out.innerHTML = html;
+}
+
+// ===== ประวัติ =====
+async function loadHistory() {
+  const st = document.getElementById('historyStatus');
+  st.textContent = 'กำลังโหลด...';
+  try {
+    const r = await fetch(`${STOCK_API}?action=history&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.message || j.error);
+    historyJobs = j.jobs;
+    renderHistoryList();
+    if (!planEditing) renderPlan();
+  } catch (e) { st.textContent = 'โหลดไม่สำเร็จ: ' + e.message; }
+}
+
+let historyFilter = 'done';   // เริ่มที่แท็บ "เสร็จ" เสมอ
+const isProdJob = j => j.jobCode !== 'ADJUST';   // ปรับสต็อกไม่ใช่งานผลิต ไม่นับเป็นเสร็จ/ยังไม่เสร็จ
+const isPendingJob = j => !j.cancelled && isProdJob(j) && getMissingMetals(j).length > 0;
+const HISTORY_FILTERS = {
+  all: j => true,
+  done: j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && !isPendingJob(j),
+  pending: j => isPendingJob(j),
+  cancel: j => !!j.cancelled
+};
+function setHistoryFilter(f) { historyFilter = f; renderHistoryList(); }
+
+function renderHistoryList() {
+  const kw = document.getElementById('historySearch').value.trim().toLowerCase();
+  const dateVal = document.getElementById('historyDateFilter').value;
+  const monthVal = document.getElementById('historyMonthFilter').value;
+  const list = document.getElementById('historyList');
+  let found = historyJobs.filter(j => !kw || (j.jobCode + ' ' + j.jobName + ' ' + j.pump + ' ' + (j.by || j.user || '') + ' ' + (j.note || '')).toLowerCase().includes(kw));
+  if (dateVal) found = found.filter(j => historyDateStr(j) === dateVal);
+  if (monthVal) found = found.filter(j => String(j.month || '') === monthVal);
+  Object.keys(HISTORY_FILTERS).forEach(f => {
+    const btn = document.querySelector('#historyFilter [data-f="' + f + '"]');
+    if (!btn) return;
+    btn.classList.toggle('hf-active', f === historyFilter);
+    btn.querySelector('.hf-count').textContent = found.filter(HISTORY_FILTERS[f]).length;
+  });
+  const rows = found.filter(HISTORY_FILTERS[historyFilter]);
+  const dateLabel = dateVal ? (dateVal === todayStr() ? ' (วันนี้)' : ` (${dateVal.split('-').reverse().join('/')})`) : ' (ทั้งหมด)';
+  document.getElementById('historyStatus').textContent = `${rows.length} รายการ${dateLabel}`;
+  if (!rows.length) {
+    const msg = !historyJobs.length ? 'ยังไม่มีประวัติการตัดสต็อก'
+      : historyFilter === 'cancel' ? 'ไม่มีรายการที่ยกเลิก'
+      : historyFilter === 'done' ? 'ยังไม่มีงานที่ตัดครบ'
+      : historyFilter === 'pending' ? 'ไม่มีงานที่ยังตัดไม่ครบ'
+      : dateVal ? 'ไม่มีรายการในวันที่เลือก (กด "ทั้งหมด" เพื่อดูวันอื่น)' : 'ไม่พบรายการที่ตรงกับที่ค้นหา';
+    list.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl">' + msg + '</div>';
+    return;
+  }
+  list.innerHTML = rows.map(j => {
+    const adj = j.jobCode === 'ADJUST';
+    const cls = j.cancelled
+      ? 'bg-red-50 hover:bg-red-100 border-red-300'
+      : adj
+      ? 'bg-sky-50 hover:bg-sky-100 border-sky-300'
+      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300';
+    const titleCls = j.cancelled ? 'text-red-900' : adj ? 'text-sky-900' : 'text-emerald-950';
+    const subTextCls = j.cancelled ? 'text-red-800' : 'text-slate-700';
+    const detailTextCls = j.cancelled ? 'text-red-700' : 'text-slate-500';
+    const badge = j.cancelled ? '<span class="ml-1 text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">ยกเลิกแล้ว</span>' : '';
+    const monthBadge = j.month ? `<span class="ml-1 text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full">เดือน ${esc(j.month)}</span>` : '';
+    const missing = !j.cancelled ? getMissingMetals(j) : [];
+    const missingBadge = missing.length ? `<div class="mt-1 text-[11px] font-extrabold text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ตัด: ${missing.map(esc).join(', ')}</div>` : '';
+    const notePreview = j.note ? `<div class="text-[11px] font-semibold text-amber-700 truncate mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${esc(j.note)}</div>` : '';
+    const usr = (j.by || j.user) ? ` · โดย ${esc(j.by || j.user)}` : '';
+
+    return `<button type="button" data-id="${esc(j.id)}" onclick="openHistoryJob(this.dataset.id)" class="w-full text-left p-3 border rounded-2xl shadow-sm ${cls}">
+      <div class="flex justify-between items-center">
+        <span class="font-extrabold text-sm ${titleCls}">${adj ? '<i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก' : esc(j.jobCode)}${badge}${monthBadge}</span>
+        <span class="text-xs font-bold ${j.cancelled ? 'text-red-700' : 'text-slate-500'}">${esc(j.time)}</span>
+      </div>
+      <div class="text-xs font-bold ${subTextCls} truncate">${esc(adj ? j.pump : j.jobName)}</div>
+      <div class="text-[11px] font-semibold ${detailTextCls}">${adj ? '' : `ปั๊ม: ${esc(j.pump)} · ผลิต ${formatNum(Number(j.qty) || 0)} ตัว · `}${j.items.length} รายการเหล็ก${usr}</div>
+      ${notePreview}
+      ${missingBadge}
+    </button>`;
+  }).join('');
+}
+
+function showHistoryList() { document.getElementById('historyDetail').classList.add('hidden'); document.getElementById('historyListView').classList.remove('hidden'); }
+
+function openHistoryJob(id) {
+  const j = historyJobs.find(x => String(x.id) === String(id));
+  if (!j) return;
+  const adj = j.jobCode === 'ADJUST';
+  const box = document.getElementById('historyDetail');
+  const who = `<div>ผู้ตัดล่าสุด: ${esc(j.by || j.user || '-')}</div>`;
+  const monthLine = (!adj && j.month) ? `<div>เดือนงาน: ${esc(j.month)} (${esc(TH_MONTHS[parseInt(j.month, 10)] || '')})</div>` : '';
+  const head = adj ? `<div class="p-3 bg-sky-50 border border-sky-300 rounded-2xl space-y-1 text-sm font-bold text-sky-950">
+      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>ประเภท: ปรับสต็อก (ไม่ใช่งานผลิต)</div><div>หมายเหตุ: ${esc(j.pump)}</div></div>`
+    : `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm font-bold text-emerald-950">
+      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div><div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}</div>`;
+
+  const missing = !adj && !j.cancelled ? getMissingMetals(j) : [];
+  const missingBanner = missing.length
+    ? `<div class="p-3 bg-amber-100 border-2 border-amber-400 rounded-2xl text-xs font-extrabold text-amber-900"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ได้ตัด: ${missing.map(esc).join(', ')}<div class="font-bold mt-0.5">ถ้าตัดเพิ่มวันหลัง เลือกงานนี้ซ้ำ (โค้ด+ปั๊ม+เดือนเดิม) ระบบจะรวมเข้าในการ์ดนี้ให้อัตโนมัติ</div></div>`
+    : '';
+
+  const banner = j.cancelled
+    ? `<div class="p-3 bg-rose-100 border-2 border-rose-400 rounded-2xl text-xs font-extrabold text-rose-800"><i class="fa-solid fa-ban"></i> ยกเลิกแล้ว · โดย ${esc(j.cancelledBy || '-')} · ${esc(j.cancelledAt || '')}<div class="font-bold mt-0.5">สต็อกถูกคืนแล้วทั้งหมด (รวมทุกวันที่ตัดของงานนี้)</div></div>`
+    : `<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
+
+  const cards = j.items.map(it => {
+    const d = Number(it.diff) || 0, used = Number(it.used) || 0, chg = -used;
+    const scrap = Number(it.scrap) || 0;
+    const pl = Number(it.partlist) || 0;
+    const pctTxt = pl > 0 ? ` · ${d > 0 ? '+' : ''}${formatNum((d / pl) * 100)}%` : '';
+    const last = adj
+      ? `<div class="${chg > 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : chg < 0 ? 'bg-rose-100 border-rose-300 text-rose-800' : 'bg-slate-100 border-slate-300 text-slate-700'} border rounded-lg py-1"><div class="text-[10px] font-bold">สต็อก</div><div class="text-sm font-extrabold">${sgn(chg)}</div></div>`
+      : `<div class="bg-white border border-slate-300 rounded-lg py-1"><div class="text-[10px] font-bold text-slate-600">เศษทิ้ง</div><div class="text-sm font-extrabold text-slate-800">${scrap ? formatNum(scrap) : '-'}</div></div>`;
+    const foot = adj
+      ? `<div class="text-[11px] font-bold text-slate-600 flex justify-between"><span>เศษทิ้ง: ${scrap ? formatNum(scrap) + ' ซม.' : '-'}</span><span class="text-slate-400">หน่วย: ซม.</span></div>`
+      : `<div class="text-[11px] font-bold flex justify-between items-center"><span class="${diffCls(d)} border rounded-lg px-2 py-0.5">ถ่ายรูป: ${sgn(d)} ซม.${pctTxt}</span><span class="text-slate-400">หน่วย: ซม.</span></div>`;
+    return `<div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+      <div class="flex justify-between items-center"><span class="font-extrabold text-sm text-indigo-950">${esc(it.name)}</span><span class="text-xs font-bold text-slate-500">${esc(it.code)}</span></div>
+      <div class="grid grid-cols-4 gap-1.5 text-center">
+        <div class="bg-white border border-purple-300 rounded-lg py-1"><div class="text-[10px] font-bold text-purple-700">เบิก</div><div class="text-sm font-extrabold text-purple-900">${formatNum(Number(it.withdraw) || 0)}</div></div>
+        <div class="bg-lime-100/70 border border-lime-300 rounded-lg py-1"><div class="text-[10px] font-bold text-lime-800">ใช้จริง</div><div class="text-sm font-extrabold text-lime-900">${formatNum(used)}</div></div>
+        <div class="bg-white border border-amber-300 rounded-lg py-1"><div class="text-[10px] font-bold text-amber-700">คืน</div><div class="text-sm font-extrabold text-amber-900">${formatNum(Number(it.ret) || 0)}</div></div>
+        ${last}
+      </div>
+      ${foot}
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + missingBanner + banner + cards;
+  document.getElementById('historyListView').classList.add('hidden');
+  box.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function cancelJob(id) {
+  const wrap = document.createElement('div');
+  const nameIn = makeNameInput();
+  nameIn.placeholder = 'ชื่อผู้ยกเลิก (จำเป็น)';
+  const pinIn = document.createElement('input');
+  pinIn.type = 'password'; pinIn.inputMode = 'numeric'; pinIn.autocomplete = 'off';
+  pinIn.placeholder = 'รหัสยืนยันการยกเลิก (จำเป็น)';
+  pinIn.className = 'w-full p-2 border-2 border-rose-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
+  wrap.appendChild(nameIn); wrap.appendChild(pinIn);
+  if (!(await uiDialog('ยกเลิกรายการนี้?\nสต็อกจะถูกคืนอัตโนมัติ และทำย้อนกลับไม่ได้ (ประวัติยังอยู่ แสดงเป็น "ยกเลิกแล้ว")', true, wrap))) return;
+  if (pinIn.value.trim() !== CANCEL_PIN) return uiAlert('รหัสไม่ถูกต้อง ไม่สามารถยกเลิกรายการได้');
+  const who = nameIn.value.trim();
+  if (!who) return uiAlert('กรุณาใส่ชื่อผู้ยกเลิก');
+  saveName(who);
+  showBusy('กำลังยกเลิกรายการและคืนสต็อก');
+  try {
+    const j = await postApi({ action: 'cancel', id: id, user: who, by: who });
+    if (!j.ok) { hideBusy(); return uiAlert('ยกเลิกไม่สำเร็จ:\n' + (j.message || j.error)); }
+    await loadHistory(); loadStock(); openHistoryJob(id);
+    hideBusy();
+    await uiAlert('ยกเลิกรายการและคืนสต็อกเรียบร้อย');
+  } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
+}
+
+const CUT_TYPE_STYLE = {
+  box:   { color:'#4338ca', bg:'#eef2ff', border:'#c7d2fe' },
+  angle: { color:'#b45309', bg:'#fffbeb', border:'#fde68a' },
+  flat:  { color:'#047857', bg:'#ecfdf5', border:'#a7f3d0' },
+  sheet: { color:'#0369a1', bg:'#f0f9ff', border:'#bae6fd' },
+  other: { color:'#334155', bg:'#f8fafc', border:'#cbd5e1' }
+};
+function cutTypeKind(type) {
+  const t = String(type || '');
+  if (/^ML/i.test(t)) return 'sheet';
+  if (/แฟลต|flat/i.test(t)) return 'flat';
+  if (/\^|∠|⌐|⊿|<|ฉาก|angle/i.test(t)) return 'angle';
+  if (/▯|□|■|▢|▣||กล่อง|box/i.test(t)) return 'box';
+  return 'other';
+}
+
+function cutTypeIcon(kind, c) {
+  const icons = {
+    box: `<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="${c}" stroke-width="2.6"/><rect x="8" y="8" width="8" height="8" rx="1" fill="${c}" fill-opacity=".25"/>`,
+    angle: `<path d="M5 4v12a3 3 0 0 0 3 3h12" fill="none" stroke="${c}" stroke-width="3.2" stroke-linecap="round"/>`,
+    flat: `<rect x="3" y="8" width="18" height="8" rx="2" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`,
+    sheet: `<rect x="2" y="10" width="20" height="4" rx="1.5" fill="${c}"/>`,
+    other: `<circle cx="12" cy="12" r="6" fill="none" stroke="${c}" stroke-width="2.5"/>`
+  };
+  return `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">${icons[kind]}</svg>`;
+}
+
+function cutTypeBadge(type) {
+  const kind = cutTypeKind(type), s = CUT_TYPE_STYLE[kind];
+  const raw = String(type || '');
+  
+  // หากเป็นแผ่น (sheet) หรือแฟลตบาร์ (flat) ให้แสดงเฉพาะชื่อ ไม่เอาไอคอน
+  if (kind === 'sheet' || kind === 'flat') {
+    const label = raw.trim();
+    return `<span class="cut-badge" style="color:${s.color};background:${s.bg};border-color:${s.border}"><span>${esc(label)}</span></span>`;
+  }
+
+  // สำหรับเหล็กรูปพรรณอื่นๆ (กล่อง, ฉาก) ให้แสดงไอคอนตามปกติ
+  const m = raw.match(/[\d.\/]+(\s*[\*x]\s*[\d.\/]+)?\s*"?(\s*\(\d+\))?/i);
+  const label = m ? m[0].trim() : raw.replace(/[^\w\s"().]/g, '').trim();
+  return `<span class="cut-badge" style="color:${s.color};background:${s.bg};border-color:${s.border}">${cutTypeIcon(kind, s.color)}<span>${esc(label)}</span></span>`;
+}
+
+// ===== รายการตัดเหล็ก =====
+function cutUrl() {
+  return CUT_CSV_URL + (CUT_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+}
+
+async function loadCutData() {
+  const loading = document.getElementById('cutLoading'), st = document.getElementById('cutStatus');
+  loading.style.display = 'block';
+  loading.className = 'text-center text-slate-500 italic text-xs py-3';
+  loading.textContent = 'กำลังโหลดข้อมูลรายการตัด...';
+  st.textContent = 'กำลังโหลด...';
+  try {
+    const r = await fetch(cutUrl());
+    if (!r.ok) throw new Error('ไม่สามารถเชื่อมต่อ Google Sheets');
+    const rows = parseCSV(await r.text());
+    if (rows.length < 2) throw new Error('ไม่พบข้อมูล');
+    const head = rows[0].map(h => cleanText(h));
+    cutData = rows.slice(1).map(row => {
+      const o = {};
+      head.forEach((h, i) => { o[h] = cleanText(row[i]); });
+      return o;
+    });
+    cutLoaded = true;
+    loading.style.display = 'none';
+    st.textContent = `${cutData.length.toLocaleString('th-TH')} แถว`;
+    if (document.getElementById('cutSearchInput').value.trim()) cutSearch();
+  } catch (e) {
+    console.error(e);
+    loading.style.display = 'block';
+    loading.className = 'text-center text-red-600 font-bold text-xs py-3';
+    loading.textContent = '❌ ไม่สามารถโหลดข้อมูลรายการตัดได้';
+    st.textContent = 'โหลดไม่สำเร็จ';
+  }
+}
+
+function cutSearch() {
+  const kw = document.getElementById('cutSearchInput').value.trim().toLowerCase();
+  const results = document.getElementById('cutResults');
+  const dropdown = document.getElementById('cutDropdownBox');
+  const info = document.getElementById('cutInfoCard'), img = document.getElementById('cutImagePreview');
+  info.classList.add('hidden'); img.classList.add('hidden');
+  if (!kw) {
+    dropdown.classList.add('hidden');
+    results.innerHTML = '<p class="text-center text-slate-500 text-xs py-4">พิมพ์ชื่อรุ่นเพื่อค้นหา</p>';
+    return;
+  }
+  if (!cutLoaded) {
+    results.innerHTML = '<p class="text-center text-slate-500 text-xs py-4">กำลังโหลดข้อมูล...</p>';
+    return;
+  }
+  const filtered = cutData.filter(row => (row['ชื่อรุ่น'] || '').toLowerCase().includes(kw));
+  if (filtered.length === 0) {
+    dropdown.classList.add('hidden');
+    results.innerHTML = '<p class="text-center text-rose-600 font-bold text-xs py-4">❌ ไม่พบชื่อรุ่นนี้</p>';
+    return;
+  }
+  cutGroups = {};
+  filtered.forEach(row => {
+    const name = (row['ชื่อรุ่น'] || 'unknown').trim();
+    if (!cutGroups[name]) cutGroups[name] = { code: row['รหัส'] || '', rows: [] };
+    cutGroups[name].rows.push(row);
+  });
+  const names = Object.keys(cutGroups);
+  if (names.length > 1) {
+    const select = document.getElementById('cutModelSelect');
+    select.innerHTML = '<option value="">-- กรุณาเลือกรุ่นที่ต้องการ --</option>';
+    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; select.appendChild(o); });
+    dropdown.classList.remove('hidden');
+    results.innerHTML = '<p class="text-center text-sky-700 font-bold text-xs py-4">👆 พบหลายรายการ กรุณาเลือกชื่อรุ่นด้านบน</p>';
+  } else {
+    dropdown.classList.add('hidden');
+    cutDisplay(names[0]);
+  }
+}
+
+function cutOnModelSelected() {
+  const v = document.getElementById('cutModelSelect').value;
+  if (v) cutDisplay(v);
+}
+
+function cutDisplay(name) {
+  const group = cutGroups[name];
+  if (!group) return;
+  document.getElementById('cutModelName').textContent = name;
+  document.getElementById('cutInfoCard').classList.remove('hidden');
+
+  const code = group.code.toString().trim();
+  const img = document.getElementById('cutImagePreview'), pic = document.getElementById('cutProdImage');
+  if (CUT_IMAGE_BASE && code) {
+    pic.src = CUT_IMAGE_BASE + code + '.webp';
+    img.classList.remove('hidden');
+  }
+
+  let html = `<table class="cut-table"><thead><tr>
+    <th>ลำดับ</th><th>ชนิด</th><th>ขนาด</th><th>จำนวน</th><th>รวม</th><th>BOM</th><th>รวมท้าย</th>
+  </tr></thead><tbody>`;
+  group.rows.forEach(row => {
+    const extra = row['รวมท้าย'] || '';
+    const type = row['ชนิด'] || '';
+    const badge = type ? cutTypeBadge(type) : '';
+    const rowCls = extra !== '' ? 'group-end' : '';
+    html += `<tr class="${rowCls}">
+      <td>${esc(row['ลำดับ'])}</td>
+      <td>${badge}</td>
+      <td>${esc(row['ขนาด (cm)'])}</td>
+      <td>${esc(row['จำนวน'])}</td>
+      <td>${esc(row['รวม'])}</td>
+      <td><strong>${esc(row['BOM'])}</strong></td>
+      <td class="${extra ? 'font-bold text-slate-900' : ''}">${esc(extra)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('cutResults').innerHTML = html;
+}
+
+// ===== งานเสมือน ADJUST =====
+function makeAdjustJob() {
+  const metals = {};
+  Object.keys(METAL_CODE).forEach(k => metals[k] = 0);
+  return { code: 'ADJUST', name: 'ปรับสต็อก', pump: '-', metals: metals };
+}
+function setAdjustMode(on) {
+  document.body.classList.toggle('adjust-mode', on);
+  document.getElementById('adjustBox').classList.toggle('hidden', !on);
+  document.getElementById('qtyBox').classList.toggle('hidden', on);
+  document.getElementById('jobNoteBox').classList.toggle('hidden', on);
+}
+
+async function clearJob() {
+  if (!currentActiveJob) return;
+  if (!(await uiConfirm('ลบงานที่เลือกออกจากหน้าคำนวณ?\n\nตัวเลขที่กรอกไว้จะถูกล้าง ไม่กระทบสต็อกและประวัติ'))) return;
+  clearJobPanel();
+}
+
+// ล้างหน้าคำนวณกลับเป็นยังไม่ได้เลือกงาน (ใช้ทั้งตอนกดลบงาน และหลังตัดสต็อกสำเร็จ)
+function clearJobPanel() {
+  currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
+  updateMergeInfo();
+  setAdjustMode(false);
+  document.getElementById('adjustNote').value = '';
+  document.getElementById('jobNoteInput').value = '';
+  document.getElementById('globalQty').value = 1;
+  document.getElementById('selectedJobTitle').textContent = '-- ยังไม่ได้เลือกงาน (กดปุ่ม เปลี่ยนงาน เพื่อเลือก) --';
+  document.getElementById('selectedJobPump').textContent = 'ปั๊ม: -';
+  document.getElementById('metalCountBadge').textContent = '0 รายการ';
+  document.getElementById('metalCalcContainer').innerHTML = EMPTY_CALC;
+  document.getElementById('searchCode').value = '';
+  searchBom();
+}
+
+async function copyStockSummary() {
+  const btn = document.getElementById('btnCopyStock');
+  const label = '<i class="fa-regular fa-copy"></i> คัดลอกสต็อก';
+  btn.disabled = true; btn.textContent = 'กำลังดึงยอด...';
+  await loadStock();
+  const when = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const text = `สรุปสต็อกเหล็ก (${when}) หน่วย ซม.\n` + METAL_COLS.map(m => {
+    const q = stockMap[m.code];
+    return `${m.name}: ${q === undefined ? '-' : formatNum(q) + ' ซม.'}${q !== undefined && q <= 0 ? ' (หมด)' : ''}`;
+  }).join('\n');
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+  if (ok) { btn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว'; setTimeout(() => { btn.innerHTML = label; btn.disabled = false; }, 1500); }
+  else { btn.innerHTML = label; btn.disabled = false; await uiAlert('คัดลอกอัตโนมัติไม่ได้ กดค้างที่ข้อความแล้วคัดลอกเอง:\n\n' + text); }
+}
+
+initPlanMonthSelect();
+loadPlan();
+loadUnits();
+initJobMonthSelect();
+loadDatabaseFromGoogleSheet();
+loadHistory();
+</script>
+</body>
+</html>
