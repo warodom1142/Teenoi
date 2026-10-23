@@ -1416,7 +1416,7 @@ function renderSplitRows() {
   document.getElementById('splitRows').innerHTML = splitRows.map((r, i) => `
     <div class="flex gap-1.5 items-center">
       <input type="text" list="splitCodeList" value="${esc(r.code)}" placeholder="รหัสงาน" oninput="splitRows[${i}].code=this.value" class="flex-1 min-w-0 p-2 border border-slate-300 rounded-lg font-bold text-sm bg-white">
-      <input type="number" inputmode="numeric" value="${esc(r.pcs)}" placeholder="ชิ้น" oninput="splitRows[${i}].pcs=this.value" class="w-20 p-2 text-center border border-slate-300 rounded-lg font-extrabold text-sm bg-white">
+      <input type="number" inputmode="numeric" value="${esc(r.pcs)}" placeholder="ตัว" oninput="splitRows[${i}].pcs=this.value" class="w-20 p-2 text-center border border-slate-300 rounded-lg font-extrabold text-sm bg-white">
       <button type="button" onclick="splitDelRow(${i})" class="w-10 h-10 rounded-lg bg-rose-100 text-rose-700" aria-label="ลบแถว"><i class="fa-solid fa-trash-can"></i></button>
     </div>`).join('');
 }
@@ -1453,7 +1453,7 @@ function splitCalc() {
     if (!e) { problems.push(`ไม่พบรหัส ${code || '(ว่าง)'} ใน BOM`); return; }
     if (seen.has(code)) { problems.push(`รหัส ${code} ซ้ำในรายการ`); return; }
     seen.add(code);
-    if (!pcs) { problems.push(`ใส่จำนวนชิ้นของ ${code}`); return; }
+    if (!pcs) { problems.push(`ใส่จำนวนตัวของ ${code}`); return; }
     const each = splitCmEach(e);
     if (!(each > 0)) { problems.push(`รหัส ${code} ไม่มีค่า BOM`); return; }
     lines.push({ code, name: e.name, pcs, bom: each * pcs });
@@ -1477,7 +1477,7 @@ function splitCalc() {
 
   let html = `<div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
     <colgroup><col style="width:40%"><col style="width:15%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
-    <thead><tr><th>โค้ด</th><th>ชิ้น</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
+    <thead><tr><th>โค้ด</th><th>ตัว</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
   lines.forEach((l, i) => {
     html += `<tr><td class="nm">${esc(l.code)}<div class="text-[11px] font-semibold text-slate-500">${esc(splitShortName(l.name))}</div></td>
       <td class="font-bold">${formatNum(l.pcs)}</td>
