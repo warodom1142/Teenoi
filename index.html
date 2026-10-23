@@ -64,6 +64,8 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .plan-table tr.plan-row:active{background:#eef2ff}
 .plan-bar{height:5px;border-radius:9999px;background:#e2e8f0;overflow:hidden;margin-top:3px}
 .plan-bar>i{display:block;height:100%;border-radius:9999px}
+.split-table th,.split-table td{font-size:14px;padding:8px 4px}
+.split-table th{font-size:13px}
 </style>
 </head>
 <body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
@@ -137,9 +139,9 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" onclick="splitAddRow()" class="w-full py-2 bg-white border border-emerald-300 text-emerald-800 font-bold text-xs rounded-lg"><i class="fa-solid fa-plus"></i> เพิ่มโค้ดงาน</button>
       <div class="text-xs font-extrabold text-emerald-900">2. ยอดรวมที่ตัดจริง (ซม.)</div>
       <div class="grid grid-cols-3 gap-2">
-        <label class="text-[11px] font-bold text-purple-700">เบิกรวม<input type="number" inputmode="numeric" id="splitW" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-purple-300 rounded-lg font-extrabold text-purple-900"></label>
-        <label class="text-[11px] font-bold text-amber-700">คืนรวม<input type="number" inputmode="numeric" id="splitR" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-amber-300 rounded-lg font-extrabold text-amber-900"></label>
-        <label class="text-[11px] font-bold text-slate-600">ทิ้งรวม<input type="number" inputmode="numeric" id="splitS" placeholder="0" class="w-full mt-0.5 p-1.5 text-center bg-white border-2 border-slate-300 rounded-lg font-extrabold text-slate-800"></label>
+        <label class="text-sm font-extrabold text-purple-700">เบิกรวม<input type="number" inputmode="numeric" id="splitW" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-purple-300 rounded-xl font-black text-purple-900"></label>
+        <label class="text-sm font-extrabold text-amber-700">คืนรวม<input type="number" inputmode="numeric" id="splitR" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-amber-300 rounded-xl font-black text-amber-900"></label>
+        <label class="text-sm font-extrabold text-slate-600">ทิ้งรวม<input type="number" inputmode="numeric" id="splitS" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-slate-300 rounded-xl font-black text-slate-800"></label>
       </div>
       <button type="button" onclick="splitCalc()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-equals"></i> คำนวณ</button>
       <div id="splitResult"></div>
@@ -1438,6 +1440,9 @@ function splitAllocate(total, weights) {
   return base;
 }
 
+// ชื่อสั้น: ตัดวงเล็บออกทั้งหมด เช่น "RO FAST PURE 6,000 LPD (PLD2-11)(MB FAST PURE 4040x1)" -> "RO FAST PURE 6,000 LPD"
+function splitShortName(n) { return String(n || '').replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(); }
+
 function splitCalc() {
   const out = document.getElementById('splitResult');
   const problems = [], lines = [], seen = new Set();
@@ -1470,20 +1475,17 @@ function splitCalc() {
   const wd = splitAllocate(T.w, weights), rt = splitAllocate(T.r, weights), sc = splitAllocate(T.s, weights);
   const sum = a => a.reduce((x, y) => x + y, 0);
 
-  let html = `<div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
-    <colgroup><col style="width:24%"><col style="width:11%"><col style="width:17%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
-    <thead><tr><th>โค้ด</th><th>ชิ้น</th><th>BOM รวม</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
+  let html = `<div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
+    <colgroup><col style="width:40%"><col style="width:15%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
+    <thead><tr><th>โค้ด</th><th>ชิ้น</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
   lines.forEach((l, i) => {
-    html += `<tr><td class="nm">${esc(l.code)}<div class="text-[10px] font-semibold text-slate-500">${esc(l.name)}</div></td>
+    html += `<tr><td class="nm">${esc(l.code)}<div class="text-[11px] font-semibold text-slate-500">${esc(splitShortName(l.name))}</div></td>
       <td class="font-bold">${formatNum(l.pcs)}</td>
-      <td>${formatNum(Math.round(l.bom))}</td>
       <td class="font-extrabold text-purple-700">${formatNum(wd[i])}</td>
       <td class="font-extrabold text-amber-700">${formatNum(rt[i])}</td>
       <td class="font-extrabold text-slate-800">${formatNum(sc[i])}</td></tr>`;
   });
-  html += `<tr class="bg-slate-100"><td class="nm font-extrabold">รวม</td><td class="font-extrabold">${formatNum(sum(lines.map(l => l.pcs)))}</td>
-    <td class="font-extrabold">${formatNum(Math.round(sum(lines.map(l => l.bom))))}</td>
-    <td class="font-extrabold text-purple-800">${formatNum(sum(wd))}</td><td class="font-extrabold text-amber-800">${formatNum(sum(rt))}</td><td class="font-extrabold text-slate-900">${formatNum(sum(sc))}</td></tr>`;
+  html += `<tr class="bg-slate-100"><td class="nm font-extrabold">รวม</td><td class="font-extrabold">${formatNum(sum(lines.map(l => l.pcs)))}</td>    <td class="font-extrabold text-purple-800">${formatNum(sum(wd))}</td><td class="font-extrabold text-amber-800">${formatNum(sum(rt))}</td><td class="font-extrabold text-slate-900">${formatNum(sum(sc))}</td></tr>`;
   html += '</tbody></table></div><div class="text-[11px] font-semibold text-slate-500 mt-1">หน่วย ซม. · ปัดเป็นจำนวนเต็ม · ยอดรวมตรงกับที่กรอกเสมอ</div>';
   out.innerHTML = html;
 }
