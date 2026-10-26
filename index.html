@@ -79,6 +79,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <button type="button" onclick="refreshPlan()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
   </div>
   <div id="planStatus" class="text-xs font-bold text-slate-500 leading-snug">กำลังโหลดแผน...</div>
+  <div id="industryPay" class="hidden"></div>
   <div id="planList" class="space-y-3"></div>
   <div id="planFooter" class="flex gap-2"></div>
 </div>
@@ -1054,6 +1055,55 @@ async function loadPlan() {
 }
 function refreshPlan() { if (planEditing) return; loadPlan(); loadHistory(); }
 
+// ===== ค่ายอดหมวดอุตสาหกรรม (ยูนิต -> เงินรวม ประมาณ -> หารต่อคน) =====
+const PAY_PEOPLE = 25;   // จำนวนคนที่หารค่ายอด
+// [ยูนิต, เงินรวม] จากตารางอ้างอิง (ระหว่างจุดจะประมาณค่าเชิงเส้น)
+const INDUSTRY_PAY = [
+  [200, 13000], [220, 14300], [240, 15600], [260, 20280], [280, 21840], [300, 25650], [317, 26505],
+  [320, 27360], [340, 31620], [360, 33480], [380, 38950], [400, 41000], [420, 43050], [440, 48400],
+  [460, 52440], [480, 56640], [500, 61000], [520, 65520], [540, 70200], [560, 75040], [580, 80040], [600, 85200]
+];
+// คืนค่าเงินรวมของยูนิตที่ระบุ หรือ null ถ้าอยู่นอกช่วงตาราง
+function industryPay(u) {
+  if (!(u > 0)) return null;
+  const pts = INDUSTRY_PAY.slice().sort((a, b) => a[0] - b[0]);
+  if (u < pts[0][0] || u > pts[pts.length - 1][0]) return null;
+  for (let i = 0; i < pts.length; i++) {
+    if (pts[i][0] === u) return pts[i][1];
+    if (i < pts.length - 1 && u > pts[i][0] && u < pts[i + 1][0]) {
+      const [u1, p1] = pts[i], [u2, p2] = pts[i + 1];
+      return p1 + (p2 - p1) * (u - u1) / (u2 - u1);
+    }
+  }
+  return null;
+}
+function renderIndustryPay() {
+  const el = document.getElementById('industryPay');
+  if (!el) return;
+  if (!planLoaded) { el.classList.add('hidden'); return; }
+  const rows = (planEditing ? planDraft : planRowsOf(planMonth)).filter(r => String(r.section || '').trim() === 'อุตสาหกรรม');
+  el.classList.remove('hidden');
+  if (!rows.length) {
+    el.innerHTML = '<div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500">ไม่มีงานหมวดอุตสาหกรรมในแผนเดือนนี้</div>';
+    return;
+  }
+  const units = rows.reduce((a, r) => a + (Number(r.qty) || 0) * unitPer(r), 0);
+  const noUnit = rows.filter(r => !(unitPer(r) > 0)).length;
+  const pay = industryPay(units);
+  const body = pay === null
+    ? `<div class="text-xs font-bold text-rose-700">ยูนิต ${formatNum(units)} อยู่นอกช่วงตารางค่ายอด (200–600)</div>`
+    : `<div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">ยูนิตอุตสาหกรรม</div><div class="text-base font-extrabold text-emerald-800">${formatNum(units)}</div></div>
+        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">เงินรวม (ประมาณ)</div><div class="text-base font-extrabold text-indigo-900">${formatNum(Math.round(pay))}</div></div>
+        <div class="bg-emerald-100 border border-emerald-300 rounded-lg py-1.5"><div class="text-[10px] font-bold text-emerald-800">ต่อคน (${PAY_PEOPLE} คน)</div><div class="text-base font-extrabold text-emerald-900">${formatNum(Math.round(pay / PAY_PEOPLE))}</div></div>
+      </div>`;
+  el.innerHTML = `<div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+    <div class="text-xs font-extrabold text-emerald-900"><i class="fa-solid fa-sack-dollar"></i> ค่ายอด หมวดอุตสาหกรรม</div>
+    ${body}
+    ${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มียูนิตต่อเครื่อง ${noUnit} งาน (ยอดยังไม่ครบ)</div>` : ''}
+  </div>`;
+}
+
 function renderPlan() {
   const list = document.getElementById('planList'), foot = document.getElementById('planFooter');
   if (!list) return;
@@ -1122,6 +1172,7 @@ function renderPlan() {
   if (!planEditing && planLoaded && Object.keys(UNIT_SEED).some(c => unitMap[c] === undefined)) html += '<button type="button" onclick="importUnitSeed()" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl"><i class="fa-solid fa-cubes"></i> นำเข้ายูนิตต่อเครื่องจากใบแผน (12 รหัส)</button>';
   if (!planEditing && planLoaded) html += '<button type="button" onclick="openPlanImport()" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-300 text-indigo-800 font-bold text-sm rounded-xl"><i class="fa-solid fa-camera"></i> เพิ่มงานจากรูปแผน / วางรายการ</button>';
   list.innerHTML = html;
+  renderIndustryPay();
 
   foot.innerHTML = planEditing
     ? '<button type="button" onclick="cancelPlanEdit()" class="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-xl">ยกเลิก</button><button type="button" onclick="savePlanEdit()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-floppy-disk"></i> บันทึกแผน</button>'
