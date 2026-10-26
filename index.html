@@ -976,7 +976,7 @@ const PLAN_SEED = { month: '11', rows: [
 const UNIT_SEED = { '1307174': 1, '1307155': 1, '1307029': 2, '1307031': 2, '1307229': 2, '2807037': 1, '2807038': 2,
   '1307219': 2, '1307152': 2, '1307230': 1, '1307026': 1, '1310093': 5 };
 let unitMap = {};
-let planAll = [], planMonth = getCurrentJobMonth(), planEditing = false, planDraft = [], planLoaded = false;
+let planAll = [], planMonth = getSavedPlanMonth(), planEditing = false, planDraft = [], planLoaded = false;
 function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
 
 async function loadUnits() {
@@ -1035,7 +1035,10 @@ function initPlanMonthSelect() {
   }
   sel.value = planMonth;
 }
-function onPlanMonthChange() { planMonth = document.getElementById('planMonthSelect').value; renderPlan(); }
+// จำเดือนที่เลือกในแท็บแผนงานไว้ (แยกจากเดือนงาน) ไม่งั้นรีโหลดแล้วจะกลับไปเดือนปัจจุบัน
+function getSavedPlanMonth() { try { const v = localStorage.getItem('bomcal_planMonth'); if (v) return v; } catch (e) {} return getCurrentJobMonth(); }
+function setSavedPlanMonth(v) { try { localStorage.setItem('bomcal_planMonth', String(v)); } catch (e) {} }
+function onPlanMonthChange() { planMonth = document.getElementById('planMonthSelect').value; setSavedPlanMonth(planMonth); renderPlan(); }
 
 async function loadPlan() {
   try {
