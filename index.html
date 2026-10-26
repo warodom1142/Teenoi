@@ -1058,11 +1058,11 @@ function refreshPlan() { if (planEditing) return; loadPlan(); loadHistory(); }
 // ===== ค่ายอดหมวดอุตสาหกรรม (ยูนิต -> เงินรวม ประมาณ -> หารต่อคน) =====
 const PAY_PEOPLE = 25;   // จำนวนคนที่หารค่ายอด
 // สมการจากข้อมูลจริง 9 เดือน (ก.ย.-68 ถึง ส.ค.-69, ยูนิต 232–438, R² 0.997): เงินรวม ≈ a + b × ยูนิต
-const PAY_A = -21658, PAY_B = 154.02;
+const PAY_A = -21658, PAY_B = 154.02, PAY_START = 200;   // เริ่มมีค่ายอดที่ 200 ยูนิตขึ้นไป
 const PAY_RANGE = [232, 438];   // ช่วงยูนิตของข้อมูลจริงที่ใช้สร้างสมการ
 // คืนเงินรวมประมาณของยูนิตที่ระบุ หรือ null ถ้ายูนิตเป็น 0
 function industryPay(u) {
-  if (!(u > 0)) return null;
+  if (!(u >= PAY_START)) return null;   // ต่ำกว่า 200 ยูนิต ยังไม่มีค่ายอด
   return Math.max(0, PAY_A + PAY_B * u);
 }
 function renderIndustryPay() {
@@ -1080,7 +1080,7 @@ function renderIndustryPay() {
   const pay = industryPay(units);
   const outside = units < PAY_RANGE[0] || units > PAY_RANGE[1];
   const body = pay === null
-    ? `<div class="text-xs font-bold text-rose-700">ยังไม่มียูนิตในแผนเดือนนี้</div>`
+    ? `<div class="text-xs font-bold text-slate-600">ยูนิต ${formatNum(units)} ยังไม่ถึง ${PAY_START} ยูนิต จึงยังไม่มีค่ายอด</div>`
     : `${outside ? `<div class="text-[11px] font-bold text-amber-700">ยูนิต ${formatNum(units)} อยู่นอกช่วงข้อมูลจริง (${PAY_RANGE[0]}–${PAY_RANGE[1]}) ค่าอาจคลาดเคลื่อน</div>` : ''}<div class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">ยูนิตอุตสาหกรรม</div><div class="text-base font-extrabold text-emerald-800">${formatNum(units)}</div></div>
         <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">เงินรวม (ประมาณ)</div><div class="text-base font-extrabold text-indigo-900">${formatNum(Math.round(pay))}</div></div>
