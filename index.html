@@ -139,9 +139,9 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" onclick="splitAddRow()" class="w-full py-2 bg-white border border-emerald-300 text-emerald-800 font-bold text-xs rounded-lg"><i class="fa-solid fa-plus"></i> เพิ่มโค้ดงาน</button>
       <div class="text-xs font-extrabold text-emerald-900">2. ยอดรวมที่ตัดจริง (ซม.)</div>
       <div class="grid grid-cols-3 gap-2">
-        <label class="text-sm font-extrabold text-purple-700">เบิกรวม<input type="number" inputmode="numeric" id="splitW" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-purple-300 rounded-xl font-black text-purple-900"></label>
-        <label class="text-sm font-extrabold text-amber-700">คืนรวม<input type="number" inputmode="numeric" id="splitR" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-amber-300 rounded-xl font-black text-amber-900"></label>
-        <label class="text-sm font-extrabold text-slate-600">ทิ้งรวม<input type="number" inputmode="numeric" id="splitS" placeholder="0" class="w-full mt-1 py-3 text-center text-xl bg-white border-2 border-slate-300 rounded-xl font-black text-slate-800"></label>
+        <label class="text-sm font-extrabold text-purple-700">เบิกรวม<input type="number" inputmode="numeric" id="splitW" placeholder="0" readonly onclick="openCalculatorModal(this, 'เบิกรวม (แบ่งสัดส่วน)')" class="cursor-pointer w-full mt-1 py-3 text-center text-xl bg-white border-2 border-purple-300 rounded-xl font-black text-purple-900"></label>
+        <label class="text-sm font-extrabold text-amber-700">คืนรวม<input type="number" inputmode="numeric" id="splitR" placeholder="0" readonly onclick="openCalculatorModal(this, 'คืนรวม (แบ่งสัดส่วน)')" class="cursor-pointer w-full mt-1 py-3 text-center text-xl bg-white border-2 border-amber-300 rounded-xl font-black text-amber-900"></label>
+        <label class="text-sm font-extrabold text-slate-600">ทิ้งรวม<input type="number" inputmode="numeric" id="splitS" placeholder="0" readonly onclick="openCalculatorModal(this, 'ทิ้งรวม (แบ่งสัดส่วน)')" class="cursor-pointer w-full mt-1 py-3 text-center text-xl bg-white border-2 border-slate-300 rounded-xl font-black text-slate-800"></label>
       </div>
       <button type="button" onclick="splitCalc()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-equals"></i> คำนวณ</button>
       <div id="splitResult"></div>
