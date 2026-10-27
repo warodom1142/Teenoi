@@ -973,8 +973,13 @@ const PLAN_SEED = { month: '11', rows: [
   ['อุตสาหกรรม', '1307219', 5], ['อุตสาหกรรม', '1310093', 5], ['อุตสาหกรรม', '1307031', 5]
 ] };
 // ยูนิตต่อ 1 เครื่อง ของแต่ละรหัสงาน (จากใบแผนผลิตอุตสาหกรรม คอลัมน์ @) — ยังไม่มีข้อมูลตู้น้ำหยอดเหรียญ 1307113/1310116/1310117
-const UNIT_SEED = { '1307174': 1, '1307155': 1, '1307029': 2, '1307031': 2, '1307229': 2, '2807037': 1, '2807038': 2,
-  '1307219': 2, '1307152': 2, '1307230': 1, '1307026': 1, '1310093': 5 };
+// แผนผลิตอุตสาหกรรม ตุลาคม 2569 (คอลัมน์ @ ของทีม 1–3) + รหัสเก่าที่ยังไม่อยู่ในแผนนี้
+const UNIT_SEED = {
+  '2807037': 1, '1307228': 2, '1307029': 2, '1307155': 1, '1310078': 3, '1307035': 4, '1307036': 8, '1307148': 15,
+  '1307173': 1, '1307175': 2, '1307152': 2, '1310047': 2, '1307041': 8, '1307218': 4, '1307031': 2,
+  '2807038': 2, '1307224': 1, '1307026': 2, '1307045': 2, '1310076': 3, '1310129': 15, '1307127': 4, '1307032': 1,
+  '1307174': 1, '1307229': 2, '1307219': 2, '1307230': 1, '1310093': 5
+};
 let unitMap = {};
 let planAll = [], planMonth = getSavedPlanMonth(), planEditing = false, planDraft = [], planLoaded = false;
 function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
@@ -1153,7 +1158,7 @@ function renderPlan() {
     }
   }
   if (planEditing) html += '<button type="button" onclick="addPlanSection()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-folder-plus"></i> เพิ่มหมวดใหม่</button>';
-  if (!planEditing && planLoaded && Object.keys(UNIT_SEED).some(c => unitMap[c] === undefined)) html += '<button type="button" onclick="importUnitSeed()" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl"><i class="fa-solid fa-cubes"></i> นำเข้ายูนิตต่อเครื่องจากใบแผน (12 รหัส)</button>';
+  if (!planEditing && planLoaded && Object.keys(UNIT_SEED).some(c => unitMap[c] === undefined)) html += '<button type="button" onclick="importUnitSeed()" class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl"><i class="fa-solid fa-cubes"></i> นำเข้ายูนิตต่อเครื่องจากใบแผน (${Object.keys(UNIT_SEED).length} รหัส)</button>';
   if (!planEditing && planLoaded) html += industryPayHtml();
   if (!planEditing && planLoaded) html += '<button type="button" onclick="openPlanImport()" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-300 text-indigo-800 font-bold text-sm rounded-xl"><i class="fa-solid fa-camera"></i> เพิ่มงานจากรูปแผน / วางรายการ</button>';
   list.innerHTML = html;
