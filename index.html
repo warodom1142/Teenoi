@@ -1136,7 +1136,7 @@ function renderPlan() {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
         const prCell = pr ? `<div class="font-extrabold text-xs" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total} ประเภท</div><div class="plan-bar"><i style="width:${pr.pct}%;background:${col}"></i></div>` : '-';
-        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="openPlanJob(${i})"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
+        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
           <td class="nm">${nameCell}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
@@ -1235,6 +1235,17 @@ async function importPlanSeed() {
 }
 
 // เปิดงานจากแผน -> ไปหน้าคำนวณ (จำนวนผลิตและเดือนงานตามแผน)
+// งานที่ตัดครบ 100% แล้ว -> เปิดการ์ดงานนั้นในหน้าประวัติ
+function openPlanHistory(i) {
+  const r = planRowsOf(planMonth)[i];
+  if (!r) return;
+  const pumps = new Set(bomEntriesOf(r.code).map(e => e.pump));
+  const job = historyJobs.find(h => !h.cancelled && h.jobCode === String(r.code) && pumps.has(h.pump) && String(h.month || '') === String(planMonth));
+  if (!job) return uiAlert(`ไม่พบประวัติการตัดของ ${r.code}`);
+  switchTab('history');
+  openHistoryJob(job.id);
+}
+
 async function openPlanJob(i) {
   const r = planRowsOf(planMonth)[i];
   if (!r) return;
