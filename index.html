@@ -65,6 +65,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .plan-bar{height:5px;border-radius:9999px;background:#e2e8f0;overflow:hidden;margin-top:3px}
 .plan-bar>i{display:block;height:100%;border-radius:9999px}
 .split-table th,.split-table td{font-size:14px;padding:8px 4px}
+.split-table td:not(.nm){white-space:nowrap;padding:8px 1px}
 .split-table th{font-size:13px}
 </style>
 </head>
@@ -1530,7 +1531,7 @@ function splitCalc() {
   const sum = a => a.reduce((x, y) => x + y, 0);
 
   let html = `<div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
-    <colgroup><col style="width:40%"><col style="width:15%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
+    <colgroup><col style="width:33%"><col style="width:13%"><col style="width:18%"><col style="width:18%"><col style="width:18%"></colgroup>
     <thead><tr><th>โค้ด</th><th>ตัว</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th></tr></thead><tbody>`;
   lines.forEach((l, i) => {
     html += `<tr><td class="nm">${esc(l.code)}<div class="text-[11px] font-semibold text-slate-500">${esc(splitShortName(l.name))}</div></td>
