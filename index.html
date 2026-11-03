@@ -223,7 +223,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <div class="flex gap-1.5 items-center">
       <div class="relative flex-1 min-w-0 overflow-hidden rounded-lg">
         <input type="date" id="historyDateFilter" onchange="renderHistoryList()" style="-webkit-appearance:none;appearance:none;min-width:0;max-width:100%" class="block w-full p-1.5 border border-slate-300 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        <span id="historyDateAllTag" class="hidden absolute inset-0 flex items-center px-1.5 bg-white border border-slate-300 rounded-lg text-xs font-extrabold text-indigo-800 pointer-events-none">ทุกวัน</span>
+        <span id="historyDateAllTag" class="hidden absolute inset-0 flex items-center justify-center bg-indigo-50 border-2 border-indigo-400 rounded-lg text-sm font-black text-indigo-800 pointer-events-none">📅 ทุกวัน</span>
       </div>
       <button type="button" onclick="setHistoryDateToday()" class="px-2.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-lg text-[11px] font-bold whitespace-nowrap">วันนี้</button>
       <button type="button" onclick="setHistoryDateAll()" class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold whitespace-nowrap">ทั้งหมด</button>
