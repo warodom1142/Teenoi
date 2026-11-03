@@ -1442,9 +1442,10 @@ function openPlanImport() {
       if (q('[data-mode]').value === 'replace') rowsOut = items.map(r => ({ section: r.section, code: r.code, qty: r.qty }));
       else {
         rowsOut = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty }));
+        // รหัสซ้ำแต่จำนวนต่างกัน = เป็นอีกงานหนึ่ง เพิ่มเป็นแถวใหม่ (ข้ามเฉพาะแถวที่ซ้ำทั้งรหัส จำนวน และหมวด)
         items.forEach(r => {
-          const k = rowsOut.findIndex(x => x.code === r.code);
-          if (k >= 0) rowsOut[k].qty = r.qty; else rowsOut.push({ section: r.section, code: r.code, qty: r.qty });
+          const same = rowsOut.some(x => x.code === r.code && Number(x.qty) === Number(r.qty) && (x.section || '') === (r.section || ''));
+          if (!same) rowsOut.push({ section: r.section, code: r.code, qty: r.qty });
         });
       }
       if (await savePlanRows(planMonth, rowsOut)) { await saveUnits(items); close(); renderPlan(); }
