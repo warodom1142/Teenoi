@@ -221,7 +221,10 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" data-f="cancel" onclick="setHistoryFilter('cancel')" class="hf-btn">ยกเลิก <span class="hf-count">0</span></button>
     </div>
     <div class="flex gap-1.5 items-center">
-      <input type="date" id="historyDateFilter" onchange="renderHistoryList()" class="flex-1 min-w-0 p-1.5 border border-slate-300 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <div class="relative flex-1 min-w-0">
+        <input type="date" id="historyDateFilter" onchange="renderHistoryList()" class="w-full p-1.5 border border-slate-300 rounded-lg font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <span id="historyDateAllTag" class="hidden absolute inset-0 flex items-center px-2 bg-white rounded-lg text-xs font-extrabold text-indigo-800 pointer-events-none">ทุกวัน</span>
+      </div>
       <button type="button" onclick="setHistoryDateToday()" class="px-2.5 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-lg text-[11px] font-bold whitespace-nowrap">วันนี้</button>
       <button type="button" onclick="setHistoryDateAll()" class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold whitespace-nowrap">ทั้งหมด</button>
     </div>
@@ -1574,6 +1577,7 @@ function renderHistoryList() {
   const kw = document.getElementById('historySearch').value.trim().toLowerCase();
   const dateVal = document.getElementById('historyDateFilter').value;
   const monthVal = document.getElementById('historyMonthFilter').value;
+  document.getElementById('historyDateAllTag').classList.toggle('hidden', !!dateVal);   // ไม่ระบุวัน = แสดงทุกวัน
   const list = document.getElementById('historyList');
   let found = historyJobs.filter(j => !kw || (j.jobCode + ' ' + j.jobName + ' ' + j.pump + ' ' + (j.by || j.user || '') + ' ' + (j.note || '')).toLowerCase().includes(kw));
   if (dateVal) found = found.filter(j => historyDateStr(j) === dateVal);
