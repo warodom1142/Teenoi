@@ -582,6 +582,7 @@ async function applyJobToCalculator(planQty) {
   let metals = job.metals;
   if (job.code !== 'ADJUST') {
     const cands = historyJobs.filter(h => !h.cancelled && h.jobCode === job.code && h.pump === job.pump
+      && (!(Number(planQty) > 0) || Number(h.qty) === Number(planQty))
       && Object.keys(job.metals).some(m => !(h.items || []).some(it => it.name === m)));
     if (cands.length) {
       const node = document.createElement('select');
@@ -1017,7 +1018,7 @@ function planRowsOf(m) { return planAll.filter(r => String(r.month) === String(m
 function bomEntriesOf(code) { return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST'); }
 
 // ความคืบหน้า = จำนวนประเภทเหล็กใน BOM ที่ตัดแล้ว (จากประวัติ ไม่นับที่ยกเลิก ตามเดือนของแผน) / ประเภทเหล็กทั้งหมดของ BOM
-function planProgress(code, month) {
+function planProgress(code, month, qty) {
   let best = null;
   bomEntriesOf(code).forEach(e => {
     const names = Object.keys(e.metals || {});
@@ -1025,6 +1026,7 @@ function planProgress(code, month) {
     const cut = new Set();
     historyJobs.forEach(h => {
       if (h.cancelled || h.jobCode !== e.code || h.pump !== e.pump || String(h.month) !== String(month)) return;
+      if (qty !== undefined && Number(h.qty) !== Number(qty)) return;   // รหัสเดียวกันแต่จำนวนต่างกัน = คนละงาน
       (h.items || []).forEach(it => cut.add(it.name));
     });
     const n = names.filter(m => cut.has(m)).length;
@@ -1142,7 +1144,7 @@ function renderPlan() {
           <td><input type="text" inputmode="numeric" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
           <td class="whitespace-nowrap"><button type="button" onclick="movePlanRow(${i}, -1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-circle-arrow-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนลง"><i class="fa-solid fa-circle-arrow-down"></i></button><button type="button" onclick="removePlanRow(${i})" class="px-1 text-rose-600 text-lg" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
       } else {
-        const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth);
+        const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
         const prCell = pr ? `<div class="font-extrabold text-xs" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total} ประเภท</div><div class="plan-bar"><i style="width:${pr.pct}%;background:${col}"></i></div>` : '-';
         html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
@@ -1258,7 +1260,7 @@ function openPlanHistory(i) {
   const r = planRowsOf(planMonth)[i];
   if (!r) return;
   const pumps = new Set(bomEntriesOf(r.code).map(e => e.pump));
-  const job = historyJobs.find(h => !h.cancelled && h.jobCode === String(r.code) && pumps.has(h.pump) && String(h.month || '') === String(planMonth));
+  const job = historyJobs.find(h => !h.cancelled && h.jobCode === String(r.code) && pumps.has(h.pump) && String(h.month || '') === String(planMonth) && Number(h.qty) === Number(r.qty));
   if (!job) return uiAlert(`ไม่พบประวัติการตัดของ ${r.code}`);
   switchTab('history');
   openHistoryJob(job.id);
