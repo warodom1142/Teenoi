@@ -1137,12 +1137,12 @@ function renderPlan() {
         : missing ? '<span class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบรหัสนี้ใน BOM</span>'
         : esc(entries[0].name);
       if (planEditing) {
-        html += `<tr class="${missing ? 'bg-rose-50' : ''}"><td>${n + 1}</td>
+        html += `<tr class="${missing ? 'bg-rose-50' : (planMovedRef === r ? 'bg-amber-200' : '')}"><td class="font-extrabold">${n + 1}</td>
           <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-indigo-100 text-indigo-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button></td>
           <td class="nm">${nameCell}</td>
           <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" onchange="setPlanQty(${i}, this.value)" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
           <td><input type="text" inputmode="numeric" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
-          <td class="whitespace-nowrap"><button type="button" onclick="movePlanRow(${i}, -1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-circle-arrow-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนลง"><i class="fa-solid fa-circle-arrow-down"></i></button><button type="button" onclick="removePlanRow(${i})" class="px-1 text-rose-600 text-lg" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+          <td><div class="flex items-center justify-center gap-1"><div class="flex flex-col gap-0.5"><button type="button" onclick="movePlanRow(${i}, -1)" class="w-9 h-6 rounded bg-indigo-600 text-white text-xs" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-chevron-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="w-9 h-6 rounded bg-indigo-600 text-white text-xs" aria-label="เลื่อนลง"><i class="fa-solid fa-chevron-down"></i></button></div><button type="button" onclick="removePlanRow(${i})" class="w-8 h-8 rounded bg-rose-100 text-rose-600" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></div></td></tr>`;
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
@@ -1205,13 +1205,15 @@ function setPlanUnits(i, v) {
   renderPlan();
 }
 function removePlanRow(i) { planDraft.splice(i, 1); renderPlan(); }
-// เลื่อนงานขึ้น/ลง ภายในหมวดเดียวกัน (ข้ามงานของหมวดอื่น)
+// เลื่อนงานขึ้น/ลง ภายในหมวดเดียวกัน (ข้ามงานของหมวดอื่น) และไฮไลต์แถวที่เพิ่งย้ายให้เห็นชัด
+let planMovedRef = null;
 function movePlanRow(i, dir) {
   const sec = planDraft[i] && planDraft[i].section;
   let j = i + dir;
   while (j >= 0 && j < planDraft.length && planDraft[j].section !== sec) j += dir;
   if (j < 0 || j >= planDraft.length) return;
   [planDraft[i], planDraft[j]] = [planDraft[j], planDraft[i]];
+  planMovedRef = planDraft[j];
   renderPlan();
 }
 async function addPlanRow(section) {
