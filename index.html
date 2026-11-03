@@ -1121,7 +1121,7 @@ function renderPlan() {
   sections.forEach(sec => {
     const sum = sec.items.reduce((a, x) => a + (Number(x.r.qty) || 0), 0);
     const sumU = sec.items.reduce((a, x) => a + (Number(x.r.qty) || 0) * unitPer(x.r), 0);
-    const cols = planEditing ? ['7%', '21%', '28%', '16%', '16%', '12%'] : ['9%', '19%', '36%', '12%', '24%'];
+    const cols = planEditing ? ['6%', '18%', '24%', '13%', '13%', '26%'] : ['9%', '19%', '36%', '12%', '24%'];
     const head = planEditing ? ['NO.', 'CODE', 'ชื่องาน', 'ตัว', '@ยูนิต', ''] : ['NO.', 'CODE', 'ชื่องาน', 'ตัว', 'คืบหน้า'];
     html += `<div><div class="text-xs font-extrabold text-indigo-900 mb-1">${esc(sec.name || 'งาน')}</div>
       <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
@@ -1140,7 +1140,7 @@ function renderPlan() {
           <td class="nm">${nameCell}</td>
           <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" onchange="setPlanQty(${i}, this.value)" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
           <td><input type="text" inputmode="numeric" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
-          <td><button type="button" onclick="removePlanRow(${i})" class="text-rose-600 text-base" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
+          <td class="whitespace-nowrap"><button type="button" onclick="movePlanRow(${i}, -1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-circle-arrow-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="px-1 text-indigo-700 text-lg" aria-label="เลื่อนลง"><i class="fa-solid fa-circle-arrow-down"></i></button><button type="button" onclick="removePlanRow(${i})" class="px-1 text-rose-600 text-lg" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></td></tr>`;
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
@@ -1203,6 +1203,15 @@ function setPlanUnits(i, v) {
   renderPlan();
 }
 function removePlanRow(i) { planDraft.splice(i, 1); renderPlan(); }
+// เลื่อนงานขึ้น/ลง ภายในหมวดเดียวกัน (ข้ามงานของหมวดอื่น)
+function movePlanRow(i, dir) {
+  const sec = planDraft[i] && planDraft[i].section;
+  let j = i + dir;
+  while (j >= 0 && j < planDraft.length && planDraft[j].section !== sec) j += dir;
+  if (j < 0 || j >= planDraft.length) return;
+  [planDraft[i], planDraft[j]] = [planDraft[j], planDraft[i]];
+  renderPlan();
+}
 async function addPlanRow(section) {
   const code = await pickBomCode();
   if (!code) return;
