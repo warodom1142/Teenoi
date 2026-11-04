@@ -1648,6 +1648,21 @@ function renderSummary() {
   // งานที่สำเร็จ 100% = ทุกประเภทเหล็กใน BOM ถูกตัดแล้ว (เหมือนสถานะ "เสร็จ" ในประวัติ) และไม่ถูกยกเลิก
   const doneIds = new Set(historyJobs.filter(j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && getMissingMetals(j).length === 0).flatMap(j => (j.gids || [j.id]).map(String)));
   const live = (summaryData.events || []).filter(e => !e.cancelled && e.type !== 'cancel');
+  // คำนวณสต็อกก่อน/หลังใหม่ จาก "สต็อกปัจจุบัน" ย้อนหลัง เพราะตอนยกเลิกรายการ สต็อกที่ค่าเก่าในแถวหลังๆ ไม่ได้ถูกแก้ตาม
+  // (ไม่นับรายการที่ยกเลิกแล้ว) ทำให้ค่าเริ่ม/สิ้นแผนตรงกับสต็อกจริงของวันล่าสุด
+  (function recomputeStock() {
+    const names = summaryData.names || {};
+    const seq = [];
+    live.forEach(e => e.items.forEach(it => seq.push({ e, it })));
+    seq.sort((a, b) => b.e.ts - a.e.ts);
+    const cur = {};
+    seq.forEach(({ it }) => {
+      if (!(it.code in cur)) cur[it.code] = names[it.code] ? names[it.code].now : it.after;
+      it.after = cur[it.code];
+      it.before = Math.round((it.after + it.used) * 1000) / 1000;
+      cur[it.code] = it.before;
+    });
+  })();
   const plan = {}, adj = [], flat = [];
   live.forEach(e => {
     if (e.type === 'adjust') { adj.push(e); return; }
