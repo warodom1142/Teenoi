@@ -1609,6 +1609,17 @@ function summaryEventHtml(e) {
     <div class="text-[11px] font-semibold text-slate-600 mt-0.5 space-y-0.5">${lines}</div>
   </div>`;
 }
+function summaryAdjBar(e) {
+  const parts = e.items.map(it => {
+    const amt = Math.abs(it.used);
+    const sign = it.used > 0 ? '−' : it.used < 0 ? '+' : '';
+    return `${esc(it.name)} ${sign}${formatNum(amt)}`;
+  }).join(' · ');
+  return `<div class="flex items-center gap-2 my-1.5">
+    <div class="flex-1 h-px bg-sky-400"></div>
+    <span class="text-[11px] font-extrabold text-sky-900 bg-sky-100 border border-sky-300 rounded-full px-2 py-0.5 max-w-[85%] text-center">📦 ปรับสต็อก ${bkkTime(e.ts)}<br><span class="font-bold">${parts}</span></span>
+    <div class="flex-1 h-px bg-sky-400"></div></div>`;
+}
 function renderSummary() {
   const box = document.getElementById('stockSummary');
   if (!box || !summaryData) return;
@@ -1616,12 +1627,13 @@ function renderSummary() {
   // งานที่สำเร็จ 100% = ทุกประเภทเหล็กใน BOM ถูกตัดแล้ว (เหมือนสถานะ "เสร็จ" ในประวัติ) และไม่ถูกยกเลิก
   const doneIds = new Set(historyJobs.filter(j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && getMissingMetals(j).length === 0).map(j => String(j.id)));
   const live = (summaryData.events || []).filter(e => !e.cancelled && e.type !== 'cancel');
-  const plan = {}, adj = [];
+  const plan = {}, adj = [], flat = [];
   live.forEach(e => {
     if (e.type === 'adjust') { adj.push(e); return; }
     if (!doneIds.has(String(e.gid))) return;
     const k = String(e.month || '-');
     (plan[k] = plan[k] || []).push(e);
+    flat.push(e);
   });
   const keys = Object.keys(plan).sort((a, b) => (parseInt(a, 10) || 99) - (parseInt(b, 10) || 99));
   let html = `<div class="flex justify-between items-center"><span class="font-extrabold text-sm text-indigo-950"><i class="fa-solid fa-chart-column text-indigo-600"></i> สรุปการใช้เหล็กตามแผนงาน</span>
@@ -1647,16 +1659,14 @@ function renderSummary() {
       ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
         <colgroup><col style="width:28%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
         <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
-      <details class="text-xs"><summary class="font-bold text-indigo-800 cursor-pointer py-1">ดูรายการตามวันที่</summary>
-        <div class="space-y-1.5 pt-1">${list.map(summaryEventHtml).join('')}</div></details>
     </div>`;
   });
-  if (adj.length) {
-    const alist = adj.slice().sort((a, b) => a.ts - b.ts);
-    html += `<div class="border border-sky-200 rounded-2xl p-2 bg-sky-50 space-y-2">
-      <div class="font-extrabold text-sm text-sky-900">ปรับสต็อก <span class="text-xs text-slate-500 font-bold">· ${alist.length} รายการ</span></div>
-      <div class="space-y-1.5">${alist.map(summaryEventHtml).join('')}</div></div>`;
-  }
+  // ไทม์ไลน์รวม เรียงตามวันที่ โดยรายการปรับสต็อกคั่นไว้ตรงวันที่เกิดขึ้น
+  const timeline = flat.concat(adj).sort((a, b) => a.ts - b.ts);
+  html += `<div class="border border-slate-200 rounded-2xl p-2 bg-white space-y-1.5">
+    <div class="font-extrabold text-sm text-indigo-950 mb-1">ไทม์ไลน์ตามวันที่</div>
+    ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
+  </div>`;
   box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก</div>';
 }
 
