@@ -1517,14 +1517,12 @@ function splitShortName(n) { return String(n || '').replace(/\s*\([^)]*\)/g, '')
 
 function splitCalc() {
   const out = document.getElementById('splitResult');
-  const problems = [], lines = [], seen = new Set();
+  const problems = [], lines = [];   // รหัสซ้ำได้ แต่ละแถวคำนวณแยกกัน
   splitRows.forEach(r => {
     const code = String(r.code || '').trim(), pcs = Math.round(splitNum(r.pcs));
     if (!code && !pcs) return;
     const e = splitBomEntry(code);
     if (!e) { problems.push(`ไม่พบรหัส ${code || '(ว่าง)'} ใน BOM`); return; }
-    if (seen.has(code)) { problems.push(`รหัส ${code} ซ้ำในรายการ`); return; }
-    seen.add(code);
     if (!pcs) { problems.push(`ใส่จำนวนตัวของ ${code}`); return; }
     const each = splitCmEach(e);
     if (!(each > 0)) { problems.push(`รหัส ${code} ไม่มีค่า BOM`); return; }
