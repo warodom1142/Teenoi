@@ -66,6 +66,9 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .plan-bar>i{display:block;height:100%;border-radius:9999px}
 .split-table th,.split-table td{font-size:14px;padding:8px 4px}
 .split-table td:not(.nm){white-space:nowrap;padding:8px 1px}
+.sum-table{table-layout:fixed;min-width:540px;width:100%}
+.sum-table th,.sum-table td{font-size:12px;padding:6px 3px;text-align:right;white-space:nowrap;overflow:hidden}
+.sum-table th:first-child,.sum-table td.nm{text-align:left}
 .split-table th{font-size:13px}
 </style>
 </head>
@@ -1711,7 +1714,8 @@ function renderSummary() {
     const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
       <div class="font-extrabold text-sm text-indigo-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
-      ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
+      ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table sum-table">
+        <colgroup><col style="width:22%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"></colgroup>
         <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ปรับ/อื่นๆ</th><th>สิ้นแผน</th><th class="text-slate-400">เศษทิ้ง*</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
     </div>`;
   });
