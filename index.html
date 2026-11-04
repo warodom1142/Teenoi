@@ -1620,6 +1620,27 @@ function summaryAdjBar(e) {
     <span class="text-[11px] font-extrabold text-sky-900 bg-sky-100 border border-sky-300 rounded-full px-2 py-0.5 max-w-[85%] text-center">📦 ปรับสต็อก ${bkkTime(e.ts)}<br><span class="font-bold">${parts}</span></span>
     <div class="flex-1 h-px bg-sky-400"></div></div>`;
 }
+// รวมงานที่ตัดหลายรอบในไทม์ไลน์เป็นรายการเดียว (วันที่ = รอบสุดท้าย) เหมือนการ์ดในประวัติ
+// ไม่รวมถ้าเหล็กซ้ำกับรอบก่อน
+function mergeRoundEvents(list) {
+  const sorted = list.slice().sort((a, b) => a.ts - b.ts);
+  const out = [], open = {};
+  sorted.forEach(e => {
+    const key = [e.jobCode, e.jobName, e.pump, e.qty, e.month].join('|');
+    const names = new Set(e.items.map(it => it.name));
+    let c = (open[key] || []).find(x => !x.items.some(it => names.has(it.name)));
+    if (!c) {
+      c = Object.assign({}, e, { items: [], gids: [] });
+      (open[key] = open[key] || []).push(c);
+      out.push(c);
+    }
+    c.items = c.items.concat(e.items);
+    c.gids.push(e.gid);
+    c.ts = e.ts; c.time = e.time; c.gid = e.gid;
+    if (e.by) c.by = e.by;
+  });
+  return out;
+}
 function renderSummary() {
   const box = document.getElementById('stockSummary');
   if (!box || !summaryData) return;
@@ -1662,7 +1683,7 @@ function renderSummary() {
     </div>`;
   });
   // ไทม์ไลน์รวม เรียงตามวันที่ โดยรายการปรับสต็อกคั่นไว้ตรงวันที่เกิดขึ้น
-  const timeline = flat.concat(adj).sort((a, b) => a.ts - b.ts);
+  const timeline = mergeRoundEvents(flat).concat(adj).sort((a, b) => a.ts - b.ts);
   html += `<div class="border border-slate-200 rounded-2xl p-2 bg-white space-y-1.5">
     <div class="font-extrabold text-sm text-indigo-950 mb-1">ไทม์ไลน์ตามวันที่</div>
     ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
