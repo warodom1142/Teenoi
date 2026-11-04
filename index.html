@@ -1625,7 +1625,7 @@ function renderSummary() {
   if (!box || !summaryData) return;
   const order = METAL_COLS.map(m => m.code);
   // งานที่สำเร็จ 100% = ทุกประเภทเหล็กใน BOM ถูกตัดแล้ว (เหมือนสถานะ "เสร็จ" ในประวัติ) และไม่ถูกยกเลิก
-  const doneIds = new Set(historyJobs.filter(j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && getMissingMetals(j).length === 0).map(j => String(j.id)));
+  const doneIds = new Set(historyJobs.filter(j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && getMissingMetals(j).length === 0).flatMap(j => (j.gids || [j.id]).map(String)));
   const live = (summaryData.events || []).filter(e => !e.cancelled && e.type !== 'cancel');
   const plan = {}, adj = [], flat = [];
   live.forEach(e => {
@@ -1651,14 +1651,14 @@ function renderSummary() {
     const codes = Object.keys(agg).sort((a, b) => (order.indexOf(a) - order.indexOf(b)) || (a < b ? -1 : 1));
     const rowsHtml = codes.map(c => {
       const a = agg[c];
-      return `<tr><td class="nm">${esc(a.name)}</td><td>${formatNum(a.start)}</td><td class="text-purple-700 font-bold">${formatNum(a.wd)}</td><td class="text-amber-700 font-bold">${formatNum(a.ret)}</td><td>${formatNum(a.scrap)}</td><td class="font-extrabold">${formatNum(a.end)}</td></tr>`;
+      return `<tr><td class="nm">${esc(a.name)}</td><td>${formatNum(a.start)}</td><td class="text-purple-700 font-bold">${formatNum(a.wd)}</td><td class="text-amber-700 font-bold">${formatNum(a.ret)}</td><td class="text-slate-400">${formatNum(a.scrap)}</td><td class="font-extrabold">${formatNum(a.end)}</td></tr>`;
     }).join('');
     const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
       <div class="font-extrabold text-sm text-indigo-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
       ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
         <colgroup><col style="width:28%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
-        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
+        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th class="text-slate-400">เศษทิ้ง*</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
     </div>`;
   });
   // ไทม์ไลน์รวม เรียงตามวันที่ โดยรายการปรับสต็อกคั่นไว้ตรงวันที่เกิดขึ้น
@@ -1667,10 +1667,37 @@ function renderSummary() {
     <div class="font-extrabold text-sm text-indigo-950 mb-1">ไทม์ไลน์ตามวันที่</div>
     ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
   </div>`;
-  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก</div>';
+  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>* เศษทิ้งดูอย่างเดียว ไม่นำมาหักสต็อก</div>';
 }
 
 // ===== ประวัติ =====
+// รวมการ์ดงานที่ตัดหลายรอบเป็นการ์ดเดียว: ใช้วันที่/ผู้ตัด/โน้ตของรอบสุดท้าย
+// ไม่รวมถ้าเหล็กที่ตัดในรอบใหม่ซ้ำกับรอบก่อน (ถือเป็นงานคนละชุด) และไม่รวมรายการที่ยกเลิก/ปรับสต็อก
+function consolidateHistory(jobs) {
+  const sorted = jobs.slice().sort((a, b) => (a._ts || 0) - (b._ts || 0));
+  const out = [], open = {};
+  sorted.forEach(j => {
+    const gid = String(j.id);
+    if (j.jobCode === 'ADJUST' || j.cancelled) { out.push(Object.assign({}, j, { gids: [gid] })); return; }
+    const key = [j.jobCode, j.jobName, j.pump, j.qty, j.month].join('|');
+    const names = new Set((j.items || []).map(it => it.name));
+    let card = (open[key] || []).find(c => !c.items.some(it => names.has(it.name)));
+    if (!card) {
+      card = Object.assign({}, j, { gids: [], items: [] });
+      (open[key] = open[key] || []).push(card);
+      out.push(card);
+    }
+    card.gids.push(gid);
+    card.items = card.items.concat(j.items || []);
+    // รอบที่ใหม่กว่าเป็นตัวแทนของการ์ด (id, วันที่, ผู้ตัด, โน้ต)
+    card.id = gid; card.time = j.time; card._ts = j._ts;
+    if (j.by) card.by = j.by;
+    if (j.month) card.month = j.month;
+    if (j.note) card.note = j.note;
+  });
+  return out.sort((a, b) => (a._ts || 0) - (b._ts || 0));
+}
+
 async function loadHistory() {
   const st = document.getElementById('historyStatus');
   st.textContent = 'กำลังโหลด...';
@@ -1678,7 +1705,7 @@ async function loadHistory() {
     const r = await fetch(`${STOCK_API}?action=history&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
     if (!j.ok) throw new Error(j.message || j.error);
-    historyJobs = j.jobs;
+    historyJobs = consolidateHistory(j.jobs);
     renderHistoryList();
     if (!planEditing) renderPlan();
   } catch (e) { st.textContent = 'โหลดไม่สำเร็จ: ' + e.message; }
@@ -1826,9 +1853,13 @@ async function cancelJob(id) {
   saveName(who);
   showBusy('กำลังยกเลิกรายการและคืนสต็อก');
   try {
-    const j = await postApi({ action: 'cancel', id: id, user: who, by: who });
-    if (!j.ok) { hideBusy(); return uiAlert('ยกเลิกไม่สำเร็จ:\n' + (j.message || j.error)); }
-    await loadHistory(); loadStock(); openHistoryJob(id);
+    const card = historyJobs.find(x => String(x.id) === String(id));
+    const gids = (card && card.gids) ? card.gids : [id];
+    for (const g of gids) {
+      const j = await postApi({ action: 'cancel', id: g, user: who, by: who });
+      if (!j.ok) { await loadHistory(); loadStock(); hideBusy(); return uiAlert('ยกเลิกไม่สำเร็จ:\n' + (j.message || j.error)); }
+    }
+    await loadHistory(); loadStock(); if (historyJobs.some(x => String(x.id) === String(id))) openHistoryJob(id); else showHistoryList();
     hideBusy();
     await uiAlert('ยกเลิกรายการและคืนสต็อกเรียบร้อย');
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
