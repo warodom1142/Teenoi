@@ -360,6 +360,12 @@ function getMissingMetals(j) {
   return Object.keys(full.metals || {}).filter(m => !have.has(m));
 }
 
+// หมายเหตุของงานในแผน ที่ตรงกับรายการประวัตินี้ (รหัส + เดือน + จำนวน)
+function planNoteOf(j) {
+  if (!j || j.jobCode === 'ADJUST') return '';
+  const r = planAll.find(p => String(p.code) === String(j.jobCode) && String(p.month) === String(j.month) && Number(p.qty) === Number(j.qty) && p.note);
+  return r ? r.note : '';
+}
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sgn = n => (n > 0 ? '+' : '') + formatNum(n);
 const diffCls = d => d > 0 ? 'bg-rose-100 border-rose-300 text-rose-800' : d < 0 ? 'bg-sky-100 border-sky-300 text-sky-800' : 'bg-emerald-100 border-emerald-300 text-emerald-800';
@@ -1635,12 +1641,15 @@ function renderHistoryList() {
     const missingBadge = missing.length ? `<div class="mt-1 text-[11px] font-extrabold text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ตัด: ${missing.map(esc).join(', ')}</div>` : '';
     const notePreview = j.note ? `<div class="text-[11px] font-semibold text-amber-700 truncate mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${esc(j.note)}</div>` : '';
     const usr = (j.by || j.user) ? ` · โดย ${esc(j.by || j.user)}` : '';
+    const pn = planNoteOf(j);
+    const planNoteLine = pn ? `<div class="text-[11px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 inline-block mb-0.5">📝 ${esc(pn)}</div>` : '';
 
     return `<button type="button" data-id="${esc(j.id)}" onclick="openHistoryJob(this.dataset.id)" class="w-full text-left p-3 border rounded-2xl shadow-sm ${cls}">
       <div class="flex justify-between items-center">
         <span class="font-extrabold text-sm ${titleCls}">${adj ? '<i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก' : esc(j.jobCode)}${badge}${monthBadge}</span>
         <span class="text-xs font-bold ${j.cancelled ? 'text-red-700' : 'text-slate-500'}">${esc(j.time)}</span>
       </div>
+      ${planNoteLine}
       <div class="text-xs font-bold ${subTextCls} truncate">${esc(adj ? j.pump : j.jobName)}</div>
       <div class="text-[11px] font-semibold ${detailTextCls}">${adj ? '' : `ปั๊ม: ${esc(j.pump)} · ผลิต ${formatNum(Number(j.qty) || 0)} ตัว · `}${j.items.length} รายการเหล็ก${usr}</div>
       ${notePreview}
@@ -1661,7 +1670,7 @@ function openHistoryJob(id) {
   const head = adj ? `<div class="p-3 bg-sky-50 border border-sky-300 rounded-2xl space-y-1 text-sm font-bold text-sky-950">
       <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>ประเภท: ปรับสต็อก (ไม่ใช่งานผลิต)</div><div>หมายเหตุ: ${esc(j.pump)}</div></div>`
     : `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm font-bold text-emerald-950">
-      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div><div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}</div>`;
+      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div><div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}${planNoteOf(j) ? `<div>หมายเหตุแผน: ${esc(planNoteOf(j))}</div>` : ''}</div>`;
 
   const missing = !adj && !j.cancelled ? getMissingMetals(j) : [];
   const missingBanner = missing.length
