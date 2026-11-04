@@ -1675,26 +1675,44 @@ function renderSummary() {
   let html = `<div class="flex justify-between items-center"><span class="font-extrabold text-sm text-indigo-950"><i class="fa-solid fa-chart-column text-indigo-600"></i> สรุปการใช้เหล็กตามแผนงาน</span>
     <button type="button" onclick="loadSummary()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[11px] font-bold"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div>`;
   if (!keys.length && !adj.length) return box.innerHTML = html + '<div class="text-xs font-bold text-slate-500">ยังไม่มีงานที่ตัดครบ 100%</div>';
-  keys.forEach(k => {
-    const list = plan[k].slice().sort((a, b) => a.ts - b.ts);
+  // ช่วงของแผน = ตั้งแต่งานเสร็จรายการแรกของเดือนนั้น จนถึงก่อนงานเสร็จรายการแรกของเดือนถัดไป
+  // (ปรับสต็อกและงานที่ยังไม่ครบในช่วงนั้นก็นับรวมเพื่อให้ สิ้นแผน ตรงกับสต็อกจริง)
+  const winStart = {};
+  keys.forEach(k => { winStart[k] = Math.min(...plan[k].map(e => e.ts)); });
+  keys.forEach((k, idx) => {
+    const from = winStart[k];
+    const to = idx + 1 < keys.length ? winStart[keys[idx + 1]] : Infinity;
+    const list = plan[k].slice().sort((x, y) => x.ts - y.ts);
     const jobs = new Set(list.map(e => String(e.gid))).size;
-    // เริ่ม = สต็อกก่อนรายการแรกของแผน, สิ้นแผน = สต็อกหลังรายการสุดท้าย
+    const inWin = live.filter(e => e.ts >= from && e.ts < to).sort((x, y) => x.ts - y.ts);
     const agg = {};
-    list.forEach(e => e.items.forEach(it => {
-      const a = agg[it.code] = agg[it.code] || { name: it.name, start: it.before, end: it.after, wd: 0, ret: 0, scrap: 0 };
-      a.end = it.after; a.wd += it.withdraw; a.ret += it.ret; a.scrap += it.scrap;
+    const row = (code, name) => agg[code] = agg[code] || { name, start: null, end: null, wd: 0, ret: 0, scrap: 0, other: 0 };
+    inWin.forEach(e => e.items.forEach(it => {
+      const r = row(it.code, it.name);
+      if (r.start === null) r.start = it.before;
+      r.end = it.after;
     }));
-    const codes = Object.keys(agg).sort((a, b) => (order.indexOf(a) - order.indexOf(b)) || (a < b ? -1 : 1));
+    list.forEach(e => e.items.forEach(it => {
+      const r = row(it.code, it.name);
+      r.wd += it.withdraw; r.ret += it.ret; r.scrap += it.scrap;
+    }));
+    Object.values(agg).forEach(r => {
+      if (r.start === null) r.start = r.end;
+      if (r.end === null) r.end = r.start;
+      r.other = Math.round((r.end - r.start + r.wd - r.ret) * 1000) / 1000;
+    });
+    const codes = Object.keys(agg).sort((x, y) => (order.indexOf(x) - order.indexOf(y)) || (x < y ? -1 : 1));
     const rowsHtml = codes.map(c => {
-      const a = agg[c];
-      return `<tr><td class="nm">${esc(a.name)}</td><td>${formatNum(a.start)}</td><td class="text-purple-700 font-bold">${formatNum(a.wd)}</td><td class="text-amber-700 font-bold">${formatNum(a.ret)}</td><td class="text-slate-400">${formatNum(a.scrap)}</td><td class="font-extrabold">${formatNum(a.end)}</td></tr>`;
+      const r = agg[c];
+      const oc = r.other > 0 ? 'text-emerald-700' : r.other < 0 ? 'text-rose-700' : 'text-slate-400';
+      const ot = r.other ? (r.other > 0 ? '+' : '') + formatNum(r.other) : '-';
+      return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td class="text-purple-700 font-bold">${formatNum(r.wd)}</td><td class="text-amber-700 font-bold">${formatNum(r.ret)}</td><td class="${oc} font-bold">${ot}</td><td class="font-extrabold">${formatNum(r.end)}</td><td class="text-slate-400">${formatNum(r.scrap)}</td></tr>`;
     }).join('');
     const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
       <div class="font-extrabold text-sm text-indigo-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
       ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
-        <colgroup><col style="width:28%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
-        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th class="text-slate-400">เศษทิ้ง*</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
+        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ปรับ/อื่นๆ</th><th>สิ้นแผน</th><th class="text-slate-400">เศษทิ้ง*</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
     </div>`;
   });
   // ไทม์ไลน์รวม เรียงตามวันที่ โดยรายการปรับสต็อกคั่นไว้ตรงวันที่เกิดขึ้น
@@ -1703,7 +1721,7 @@ function renderSummary() {
     <div class="font-extrabold text-sm text-indigo-950 mb-1">ไทม์ไลน์ตามวันที่</div>
     ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
   </div>`;
-  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>* เศษทิ้งดูอย่างเดียว ไม่นำมาหักสต็อก</div>';
+  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>* เศษทิ้งดูอย่างเดียว ไม่นำมาหักสต็อก · ปรับ/อื่นๆ = ปรับสต็อก + งานที่ยังไม่ครบในช่วงแผน</div>';
 }
 
 // ===== ประวัติ =====
