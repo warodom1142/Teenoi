@@ -1670,7 +1670,7 @@ function openHistoryJob(id) {
   const head = adj ? `<div class="p-3 bg-sky-50 border border-sky-300 rounded-2xl space-y-1 text-sm font-bold text-sky-950">
       <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>ประเภท: ปรับสต็อก (ไม่ใช่งานผลิต)</div><div>หมายเหตุ: ${esc(j.pump)}</div></div>`
     : `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm font-bold text-emerald-950">
-      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div><div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}${planNoteOf(j) ? `<div>หมายเหตุแผน: ${esc(planNoteOf(j))}</div>` : ''}</div>`;
+      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div>${planNoteOf(j) ? `<div class="inline-block bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 text-amber-800">📝 ${esc(planNoteOf(j))}</div>` : ''}<div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}</div>`;
 
   const missing = !adj && !j.cancelled ? getMissingMetals(j) : [];
   const missingBanner = missing.length
