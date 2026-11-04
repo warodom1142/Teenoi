@@ -1139,7 +1139,7 @@ function renderPlan() {
       if (planEditing) {
         html += `<tr class="${missing ? 'bg-rose-50' : (planMovedRef === r ? 'bg-amber-200' : '')}"><td class="font-extrabold">${n + 1}</td>
           <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-indigo-100 text-indigo-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button></td>
-          <td class="nm">${nameCell}</td>
+          <td class="nm">${nameCell}<input type="text" value="${esc(r.note || '')}" placeholder="หมายเหตุ" maxlength="200" onchange="setPlanNote(${i}, this.value)" class="w-full mt-1 p-1 text-[11px] font-semibold border border-amber-300 rounded-md bg-amber-50"></td>
           <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" onchange="setPlanQty(${i}, this.value)" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
           <td><input type="text" inputmode="numeric" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
           <td><div class="flex items-center justify-center gap-1"><div class="flex flex-col gap-0.5"><button type="button" onclick="movePlanRow(${i}, -1)" class="w-9 h-6 rounded bg-indigo-600 text-white text-xs" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-chevron-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="w-9 h-6 rounded bg-indigo-600 text-white text-xs" aria-label="เลื่อนลง"><i class="fa-solid fa-chevron-down"></i></button></div><button type="button" onclick="removePlanRow(${i})" class="w-8 h-8 rounded bg-rose-100 text-rose-600" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></div></td></tr>`;
@@ -1148,7 +1148,7 @@ function renderPlan() {
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
         const prCell = pr ? `<div class="font-extrabold text-xs" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total} ประเภท</div><div class="plan-bar"><i style="width:${pr.pct}%;background:${col}"></i></div>` : '-';
         html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
-          <td class="nm">${nameCell}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
+          <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
     html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1">รวม ${formatNum(sum)} ตัว · <span class="text-emerald-700">${formatNum(sumU)} ยูนิต</span></div>`;
@@ -1185,7 +1185,7 @@ async function askPin(msg) {
 
 async function startPlanEdit() {
   if (!(await askPin('ใส่รหัสเพื่อแก้ไขแผนงาน'))) return;
-  planDraft = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0 }));
+  planDraft = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '' }));
   planEditing = true; renderPlan();
 }
 function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
@@ -1198,6 +1198,10 @@ function setPlanQty(i, v) {
   if (!planDraft[i]) return;
   planDraft[i].qty = Math.max(0, parseFloat(String(v).replace(/,/g, '')) || 0);
   renderPlan();
+}
+function setPlanNote(i, v) {
+  if (!planDraft[i]) return;
+  planDraft[i].note = String(v || '').trim().slice(0, 200);
 }
 function setPlanUnits(i, v) {
   if (!planDraft[i]) return;
@@ -1235,10 +1239,10 @@ async function addPlanSection() {
 async function savePlanRows(month, rows) {
   showBusy('กำลังบันทึกแผนงาน');
   try {
-    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ section: r.section || '', code: String(r.code), qty: Number(r.qty) })) });
+    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })) });
     hideBusy();
     if (!j.ok) { await uiAlert('บันทึกแผนไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
-    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty) })));
+    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })));
     return true;
   } catch (e) {
     hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); return false;
@@ -1445,7 +1449,7 @@ function openPlanImport() {
       let rowsOut;
       if (q('[data-mode]').value === 'replace') rowsOut = items.map(r => ({ section: r.section, code: r.code, qty: r.qty }));
       else {
-        rowsOut = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty }));
+        rowsOut = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, note: r.note || '' }));
         // รหัสซ้ำแต่จำนวนต่างกัน = เป็นอีกงานหนึ่ง เพิ่มเป็นแถวใหม่ (ข้ามเฉพาะแถวที่ซ้ำทั้งรหัส จำนวน และหมวด)
         items.forEach(r => {
           const same = rowsOut.some(x => x.code === r.code && Number(x.qty) === Number(r.qty) && (x.section || '') === (r.section || ''));
