@@ -1612,41 +1612,52 @@ function summaryEventHtml(e) {
 function renderSummary() {
   const box = document.getElementById('stockSummary');
   if (!box || !summaryData) return;
-  const names = summaryData.names || {};
   const order = METAL_COLS.map(m => m.code);
-  const byMonth = {};
-  (summaryData.events || []).forEach(e => { const k = bkkMonthKey(e.ts); (byMonth[k] = byMonth[k] || []).push(e); });
-  const keys = Object.keys(byMonth).sort();
-  let html = `<div class="flex justify-between items-center"><span class="font-extrabold text-sm text-indigo-950"><i class="fa-solid fa-chart-column text-indigo-600"></i> สรุปการใช้เหล็กตั้งแต่เริ่มแผน</span>
+  // งานที่สำเร็จ 100% = ทุกประเภทเหล็กใน BOM ถูกตัดแล้ว (เหมือนสถานะ "เสร็จ" ในประวัติ) และไม่ถูกยกเลิก
+  const doneIds = new Set(historyJobs.filter(j => !j.cancelled && isProdJob(j) && bomDatabase.length > 0 && getMissingMetals(j).length === 0).map(j => String(j.id)));
+  const live = (summaryData.events || []).filter(e => !e.cancelled && e.type !== 'cancel');
+  const plan = {}, adj = [];
+  live.forEach(e => {
+    if (e.type === 'adjust') { adj.push(e); return; }
+    if (!doneIds.has(String(e.gid))) return;
+    const k = String(e.month || '-');
+    (plan[k] = plan[k] || []).push(e);
+  });
+  const keys = Object.keys(plan).sort((a, b) => (parseInt(a, 10) || 99) - (parseInt(b, 10) || 99));
+  let html = `<div class="flex justify-between items-center"><span class="font-extrabold text-sm text-indigo-950"><i class="fa-solid fa-chart-column text-indigo-600"></i> สรุปการใช้เหล็กตามแผนงาน</span>
     <button type="button" onclick="loadSummary()" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[11px] font-bold"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div>`;
-  if (!keys.length) return box.innerHTML = html + '<div class="text-xs font-bold text-slate-500">ยังไม่มีประวัติการตัด</div>';
+  if (!keys.length && !adj.length) return box.innerHTML = html + '<div class="text-xs font-bold text-slate-500">ยังไม่มีงานที่ตัดครบ 100%</div>';
   keys.forEach(k => {
-    const list = byMonth[k].slice().sort((a, b) => a.ts - b.ts);
-    const [y, m] = k.split('-');
-    // รวมต่อเหล็ก: เริ่ม = สต็อกก่อนรายการแรกของเดือน, สิ้นเดือน = สต็อกหลังรายการสุดท้าย (ไม่นับรายการที่ยกเลิก)
+    const list = plan[k].slice().sort((a, b) => a.ts - b.ts);
+    const jobs = new Set(list.map(e => String(e.gid))).size;
+    // เริ่ม = สต็อกก่อนรายการแรกของแผน, สิ้นแผน = สต็อกหลังรายการสุดท้าย
     const agg = {};
-    list.forEach(e => {
-      if (e.type === 'cancel' || e.cancelled) return;
-      e.items.forEach(it => {
-        const a = agg[it.code] = agg[it.code] || { name: it.name, start: it.before, end: it.after, wd: 0, ret: 0, scrap: 0 };
-        a.end = it.after; a.wd += it.withdraw; a.ret += it.ret; a.scrap += it.scrap;
-      });
-    });
+    list.forEach(e => e.items.forEach(it => {
+      const a = agg[it.code] = agg[it.code] || { name: it.name, start: it.before, end: it.after, wd: 0, ret: 0, scrap: 0 };
+      a.end = it.after; a.wd += it.withdraw; a.ret += it.ret; a.scrap += it.scrap;
+    }));
     const codes = Object.keys(agg).sort((a, b) => (order.indexOf(a) - order.indexOf(b)) || (a < b ? -1 : 1));
     const rowsHtml = codes.map(c => {
       const a = agg[c];
       return `<tr><td class="nm">${esc(a.name)}</td><td>${formatNum(a.start)}</td><td class="text-purple-700 font-bold">${formatNum(a.wd)}</td><td class="text-amber-700 font-bold">${formatNum(a.ret)}</td><td>${formatNum(a.scrap)}</td><td class="font-extrabold">${formatNum(a.end)}</td></tr>`;
     }).join('');
+    const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
-      <div class="font-extrabold text-sm text-indigo-950">${TH_MONTHS[parseInt(m, 10)]} ${Number(y) + 543} <span class="text-xs text-slate-500 font-bold">· ${list.length} รายการ</span></div>
+      <div class="font-extrabold text-sm text-indigo-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
       ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table split-table">
         <colgroup><col style="width:28%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
-        <thead><tr><th>เหล็ก</th><th>เริ่มเดือน</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th><th>สิ้นเดือน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
+        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ทิ้ง</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
       <details class="text-xs"><summary class="font-bold text-indigo-800 cursor-pointer py-1">ดูรายการตามวันที่</summary>
         <div class="space-y-1.5 pt-1">${list.map(summaryEventHtml).join('')}</div></details>
     </div>`;
   });
-  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · แยกตามเดือนปฏิทินที่ตัด · รายการที่ยกเลิกไม่นับในยอด</div>';
+  if (adj.length) {
+    const alist = adj.slice().sort((a, b) => a.ts - b.ts);
+    html += `<div class="border border-sky-200 rounded-2xl p-2 bg-sky-50 space-y-2">
+      <div class="font-extrabold text-sm text-sky-900">ปรับสต็อก <span class="text-xs text-slate-500 font-bold">· ${alist.length} รายการ</span></div>
+      <div class="space-y-1.5">${alist.map(summaryEventHtml).join('')}</div></div>`;
+  }
+  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก</div>';
 }
 
 // ===== ประวัติ =====
