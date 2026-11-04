@@ -1119,8 +1119,30 @@ function renderPlan() {
   const total = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
   const totalUnits = rows.reduce((a, r) => a + (Number(r.qty) || 0) * unitPer(r), 0);
   const noUnit = rows.filter(r => !(unitPer(r) > 0)).length;
+  // คืบหน้าทั้งแผน = จำนวนประเภทเหล็กที่ตัดแล้ว / ประเภทเหล็กทั้งหมดของทุกงานในแผน (เฉพาะงานที่มีใน BOM)
+  let pg = null;
+  if (!planEditing && bomLoaded && planLoaded) {
+    let cut = 0, tot = 0, done = 0, cnt = 0;
+    rows.forEach(r => {
+      if (!bomEntriesOf(r.code).length) return;
+      const p = planProgress(r.code, planMonth, r.qty);
+      if (!p) return;
+      cnt++; cut += p.cut; tot += p.total; if (p.pct >= 100) done++;
+    });
+    if (cnt && tot) pg = { pct: Math.round(cut / tot * 100), cut, tot, done, cnt };
+  }
+  const pgCard = pg ? `<div class="mt-2 rounded-2xl p-3.5 text-white shadow-lg" style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 55%,#db2777 100%)">
+    <div class="flex items-end justify-between gap-3">
+      <div><div class="text-[11px] font-semibold tracking-wide opacity-80 uppercase">คืบหน้าทั้งแผน</div>
+        <div class="text-4xl font-black leading-none mt-0.5">${pg.pct}<span class="text-xl font-extrabold opacity-90">%</span></div></div>
+      <div class="text-right text-[11px] font-semibold leading-relaxed opacity-95">
+        <div><span class="font-extrabold text-sm">${pg.done}</span>/${pg.cnt} งานเสร็จ</div>
+        <div><span class="font-extrabold text-sm">${pg.cut}</span>/${pg.tot} ประเภทเหล็ก</div></div>
+    </div>
+    <div class="mt-2.5 h-2.5 rounded-full bg-white/25 overflow-hidden"><div class="h-full rounded-full bg-white transition-all duration-500" style="width:${Math.min(100, pg.pct)}%"></div></div>
+  </div>` : '';
   document.getElementById('planStatus').innerHTML = !planLoaded ? 'กำลังโหลดแผน...'
-    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
+    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`+ pgCard;
 
   const sections = [];
   rows.forEach((r, i) => {
