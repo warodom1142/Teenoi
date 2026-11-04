@@ -1131,7 +1131,7 @@ function renderPlan() {
     });
     if (cnt && tot) pg = { pct: Math.round(cut / tot * 100), cut, tot, done, cnt };
   }
-  const pgInline = pg ? ` · <span class="inline-flex items-center gap-1 align-middle px-2 py-0.5 rounded-full text-[11px] font-extrabold text-white" style="background:linear-gradient(135deg,#4f46e5,#db2777)"><i class="fa-solid fa-chart-pie"></i> ${pg.pct}% · เสร็จ ${pg.done}/${pg.cnt} งาน</span>` : '';
+  const pgInline = pg ? `<span class="inline-flex flex-col items-center leading-tight align-middle ml-1.5 px-2.5 py-1 rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#4f46e5,#db2777)"><b class="text-base font-black">${pg.pct}%</b><span class="text-[10px] font-bold opacity-95">เสร็จ ${pg.done}/${pg.cnt} งาน</span></span>` : '';
   document.getElementById('planStatus').innerHTML = !planLoaded ? 'กำลังโหลดแผน...'
     : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${pgInline}${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
 
