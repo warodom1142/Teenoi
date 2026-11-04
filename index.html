@@ -69,6 +69,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .sum-table{table-layout:fixed;min-width:540px;width:100%}
 .sum-table th,.sum-table td{font-size:12px;padding:6px 3px;text-align:right;white-space:nowrap;overflow:hidden}
 .sum-table th:first-child,.sum-table td.nm{text-align:left}
+.sum-table.sum-fit{min-width:0}
 .split-table th{font-size:13px}
 </style>
 </head>
@@ -1709,14 +1710,14 @@ function renderSummary() {
       const r = agg[c];
       const oc = r.other > 0 ? 'text-emerald-700' : r.other < 0 ? 'text-rose-700' : 'text-slate-400';
       const ot = r.other ? (r.other > 0 ? '+' : '') + formatNum(r.other) : '-';
-      return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td class="text-purple-700 font-bold">${formatNum(r.wd)}</td><td class="text-amber-700 font-bold">${formatNum(r.ret)}</td><td class="${oc} font-bold">${ot}</td><td class="font-extrabold">${formatNum(r.end)}</td><td class="text-slate-400">${formatNum(r.scrap)}</td></tr>`;
+      return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td class="text-purple-700 font-bold">${formatNum(r.wd - r.ret)}</td><td class="${oc} font-bold">${ot}</td><td class="font-extrabold">${formatNum(r.end)}</td></tr>`;
     }).join('');
     const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
       <div class="font-extrabold text-sm text-indigo-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
-      ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table sum-table">
-        <colgroup><col style="width:22%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"></colgroup>
-        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>เบิก</th><th>คืน</th><th>ปรับ/อื่นๆ</th><th>สิ้นแผน</th><th class="text-slate-400">เศษทิ้ง*</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
+      ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table sum-table sum-fit">
+        <colgroup><col style="width:28%"><col style="width:18%"><col style="width:18%"><col style="width:18%"><col style="width:18%"></colgroup>
+        <thead><tr><th>เหล็ก</th><th>เริ่มแผน</th><th>ใช้จริง</th><th>ปรับ</th><th>สิ้นแผน</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>` : ''}
     </div>`;
   });
   // ไทม์ไลน์รวม เรียงตามวันที่ โดยรายการปรับสต็อกคั่นไว้ตรงวันที่เกิดขึ้น
@@ -1725,7 +1726,7 @@ function renderSummary() {
     <div class="font-extrabold text-sm text-indigo-950 mb-1">ไทม์ไลน์ตามวันที่</div>
     ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
   </div>`;
-  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>* เศษทิ้งดูอย่างเดียว ไม่นำมาหักสต็อก · ปรับ/อื่นๆ = ปรับสต็อก + งานที่ยังไม่ครบในช่วงแผน</div>';
+  box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>ใช้จริง = เบิก − คืน · ปรับ = ปรับสต็อก + งานที่ยังไม่ครบในช่วงแผน</div>';
 }
 
 // ===== ประวัติ =====
