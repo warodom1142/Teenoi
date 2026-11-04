@@ -83,7 +83,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <select id="planMonthSelect" onchange="onPlanMonthChange()" class="flex-1 min-w-0 p-2 border border-slate-300 rounded-lg font-bold text-sm bg-white text-slate-800"></select>
     <button type="button" onclick="refreshPlan()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
   </div>
-  <div id="planStatus" class="text-xs font-bold text-slate-500 leading-snug">กำลังโหลดแผน...</div>
+  <div class="flex items-start gap-2"><div id="planStatus" class="flex-1 min-w-0 text-xs font-bold text-slate-500 leading-snug">กำลังโหลดแผน...</div><div id="planBadge" class="shrink-0"></div></div>
   <div id="planList" class="space-y-3"></div>
   <div id="planFooter" class="flex gap-2"></div>
 </div>
@@ -1133,8 +1133,9 @@ function renderPlan() {
   }
   const pgInline = pg ? `<span class="inline-flex flex-col items-center leading-tight align-middle ml-1.5 px-2.5 py-1 rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#4f46e5,#db2777)"><b class="text-base font-black">${pg.pct}%</b><span class="text-[10px] font-bold opacity-95">เสร็จ ${pg.done}/${pg.cnt} งาน</span></span>` : '';
   document.getElementById('planStatus').innerHTML = !planLoaded ? 'กำลังโหลดแผน...'
-    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${pgInline}${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
+    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-indigo-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
 
+  document.getElementById('planBadge').innerHTML = pgInline;
   const sections = [];
   rows.forEach((r, i) => {
     const nm = r.section || '';
