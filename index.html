@@ -26,13 +26,12 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .cut-table th,.cut-table td{padding:6px 2px;text-align:center;font-size:12.65px;overflow:hidden;text-overflow:ellipsis;word-break:break-word;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0}
 .cut-table th{background:#0f172a;color:#fff;font-weight:600;border:1px solid #0f172a;white-space:nowrap}
 .cut-table td{color:#334155}
-.cut-table th:nth-child(1),.cut-table td:nth-child(1){width:9%}
-.cut-table th:nth-child(2),.cut-table td:nth-child(2){width:20%}
-.cut-table th:nth-child(3),.cut-table td:nth-child(3){width:13%}
-.cut-table th:nth-child(4),.cut-table td:nth-child(4){width:12%}
-.cut-table th:nth-child(5),.cut-table td:nth-child(5){width:12%}
-.cut-table th:nth-child(6),.cut-table td:nth-child(6){width:14%}
-.cut-table th:nth-child(7),.cut-table td:nth-child(7){width:20%}
+.cut-table th:nth-child(1),.cut-table td:nth-child(1){width:10%}
+.cut-table th:nth-child(2),.cut-table td:nth-child(2){width:22%}
+.cut-table th:nth-child(3),.cut-table td:nth-child(3){width:15%}
+.cut-table th:nth-child(4),.cut-table td:nth-child(4){width:14%}
+.cut-table th:nth-child(5),.cut-table td:nth-child(5){width:19%}
+.cut-table th:nth-child(6),.cut-table td:nth-child(6){width:20%}
 .cut-table tr.group-end td{border-bottom:3px solid #0f172a}
 .cut-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:3px 4px;border-radius:999px;border:1px solid;font-size:11.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.06)}
 .cut-badge svg{flex-shrink:0}
@@ -2076,7 +2075,7 @@ function cutDisplay(name) {
   }
 
   let html = `<table class="cut-table"><thead><tr>
-    <th>ลำดับ</th><th>ชนิด</th><th>ขนาด</th><th>จำนวน</th><th>รวม</th><th>BOM</th><th>รวมท้าย</th>
+    <th>ลำดับ</th><th>ชนิด</th><th>ขนาด</th><th>จำนวน</th><th>รวม</th><th>BOM</th>
   </tr></thead><tbody>`;
   group.rows.forEach(row => {
     const extra = row['รวมท้าย'] || '';
@@ -2088,7 +2087,6 @@ function cutDisplay(name) {
       <td>${badge}</td>
       <td>${esc(row['ขนาด (cm)'])}</td>
       <td>${esc(row['จำนวน'])}</td>
-      <td>${esc(row['รวม'])}</td>
       <td><strong>${esc(row['BOM'])}</strong></td>
       <td class="${extra ? 'font-bold text-slate-900' : ''}">${esc(extra)}</td>
     </tr>`;
@@ -2123,7 +2121,7 @@ function buildCutCanvas() {
       return { text: td.textContent.trim(), bold: !!td.querySelector('strong') || td.classList.contains('font-bold') };
     })
   }));
-  const weights = [9, 20, 13, 12, 12, 14, 20], wsum = weights.reduce((a, b) => a + b, 0);
+  const weights = [10, 22, 15, 14, 19, 20], wsum = weights.reduce((a, b) => a + b, 0);
   const colW = weights.map(w => TW * w / wsum), colX = [];
   let ax = PAD; colW.forEach(w => { colX.push(ax); ax += w; });
   const TITLE_H = title ? 52 : 14, HEAD_H = 40, ROW_H = 44;
