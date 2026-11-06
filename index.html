@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ระบบคำนวณงาน & BOM สเตนเลส</title>
+<script>(function(){try{var t=localStorage.getItem('bomcal_theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();</script>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://docs.google.com">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
@@ -20,18 +21,52 @@ button{transition:transform .08s ease,background-color .15s}
 button:active{transform:scale(.97)}
 .skel{height:64px;border-radius:14px;background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:skel 1.2s ease-in-out infinite}
 @keyframes skel{to{background-position:-200% 0}}
-@media (prefers-color-scheme:dark){
-  body{background:#0f172a!important;color:#e2e8f0!important}
-  .bg-white{background:#1e293b!important}
-  .bg-slate-50,.bg-slate-100{background:#0f172a!important}
-  .bg-slate-200{background:#334155!important}
-  .text-slate-800,.text-slate-700,.text-slate-900,.text-slate-600{color:#e2e8f0!important}
-  .text-slate-500,.text-slate-400{color:#94a3b8!important}
-  .border-slate-200,.border-slate-300{border-color:#334155!important}
-  .nav-btn{color:#94a3b8}
-  .nav-btn.nav-active{background:#1e3a8a;color:#dbeafe}
-  input,select,textarea{background:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
-  .plan-table td,.cut-table td,.split-table td{background:#1e293b;color:#e2e8f0}
+html.dark{color-scheme:dark}
+html.dark body{background:#0b1220!important;color:#e2e8f0!important}
+html.dark .bg-white{background:#1e293b!important}
+html.dark .bg-slate-50{background:#172033!important}
+html.dark .bg-slate-100{background:#0b1220!important}
+html.dark .bg-slate-200{background:#334155!important}
+html.dark .bg-slate-900{background:#020617!important}
+html.dark .text-slate-900,html.dark .text-slate-800,html.dark .text-slate-700{color:#e2e8f0!important}
+html.dark .text-slate-600{color:#cbd5e1!important}
+html.dark .text-slate-500,html.dark .text-slate-400{color:#94a3b8!important}
+html.dark .border-slate-200,html.dark .border-slate-300{border-color:#334155!important}
+html.dark .shadow-md,html.dark .shadow-sm{box-shadow:0 1px 3px rgba(0,0,0,.5)!important}
+html.dark .bg-blue-50,html.dark .bg-blue-100,html.dark .bg-blue-100\/70{background-color:rgba(59,130,246,.2)!important}
+html.dark .bg-emerald-50,html.dark .bg-emerald-100{background-color:rgba(16,185,129,.2)!important}
+html.dark .bg-lime-100,html.dark .bg-lime-100\/70{background-color:rgba(132,204,22,.2)!important}
+html.dark .bg-rose-50,html.dark .bg-rose-100,html.dark .bg-red-50,html.dark .bg-red-100{background-color:rgba(244,63,94,.2)!important}
+html.dark .bg-amber-50,html.dark .bg-amber-100{background-color:rgba(245,158,11,.2)!important}
+html.dark .bg-sky-50,html.dark .bg-sky-100{background-color:rgba(14,165,233,.2)!important}
+html.dark .bg-purple-50{background-color:rgba(168,85,247,.2)!important}
+html.dark .text-blue-950,html.dark .text-blue-900,html.dark .text-blue-800,html.dark .text-blue-700{color:#bfdbfe!important}
+html.dark .text-emerald-950,html.dark .text-emerald-900,html.dark .text-emerald-800,html.dark .text-emerald-700{color:#a7f3d0!important}
+html.dark .text-lime-900,html.dark .text-lime-800{color:#d9f99d!important}
+html.dark .text-amber-950,html.dark .text-amber-900,html.dark .text-amber-800,html.dark .text-amber-700{color:#fde68a!important}
+html.dark .text-rose-900,html.dark .text-rose-800,html.dark .text-rose-700,html.dark .text-red-900,html.dark .text-red-800,html.dark .text-red-700{color:#fecdd3!important}
+html.dark .text-sky-950,html.dark .text-sky-900,html.dark .text-sky-800,html.dark .text-sky-700{color:#bae6fd!important}
+html.dark .text-purple-900,html.dark .text-purple-800,html.dark .text-purple-700{color:#e9d5ff!important}
+html.dark .bg-amber-400,html.dark .bg-amber-500{color:#1c1917!important}
+html.dark input,html.dark select,html.dark textarea{background:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
+html.dark .plan-table td,html.dark .cut-table td,html.dark .split-table td{background:#1e293b;color:#e2e8f0;border-color:#334155}
+html.dark .plan-table th,html.dark .cut-table th{background:#020617;border-color:#020617}
+html.dark .hf-btn.hf-active{background:#1e293b;color:#93c5fd}
+html.dark .hf-count{background:#334155;color:#cbd5e1}
+html.dark .nav-btn{color:#94a3b8}
+html.dark .nav-btn.nav-active{background:#1e3a8a;color:#dbeafe}
+html.dark #busyOverlay .busy-card{background:#1e293b}
+html.dark #busyOverlay .busy-text{color:#e2e8f0}
+html.dark #busyOverlay .busy-sub{color:#94a3b8}
+@media (max-width:480px){
+  .cut-table thead{display:none}
+  .cut-table,.cut-table tbody{display:block;width:100%}
+  .cut-table tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:10px 8px;border-bottom:2px solid #e2e8f0}
+  .cut-table td{display:flex;justify-content:space-between;align-items:center;gap:8px;border:0!important;padding:2px 0;width:auto!important;font-size:14px;text-align:left}
+  .cut-table td::before{content:attr(data-label);font-size:11px;font-weight:600;color:#64748b}
+  .cut-table td:nth-child(2){grid-column:1/-1}
+  .cut-table tr.group-end{border-bottom:3px solid #0f172a}
+  html.dark .cut-table tr{border-color:#334155}
 }
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
@@ -99,6 +134,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 <body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
 <div class="w-full max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 p-3 pt-4 shadow-md space-y-3 mt-1">
 
+<div class="flex justify-end -mt-1"><button id="themeBtn" type="button" onclick="toggleTheme()" class="px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-600"></button></div>
 <!-- แผนงาน -->
 <div id="pagePlan" class="page active space-y-3">
   <div class="text-center py-0.5"><span class="inline-block border-2 border-blue-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">แผนงานประจำเดือน</span></div>
@@ -153,7 +189,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <span class="text-xs font-bold text-slate-700">รายการเหล็กที่ต้องใช้ในงานนี้ (หน่วย ซม.)</span>
       <span id="metalCountBadge" class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">0 รายการ</span>
     </div>
-    <div id="metalCalcContainer" class="space-y-2.5"></div>
+    <div id="metalCalcContainer" class="space-y-4"></div>
   </div>
 
   <button type="button" id="btnCommit" onclick="commitStock()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก</button>
@@ -259,7 +295,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     </div>
     <select id="historyMonthFilter" onchange="renderHistoryList()" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs bg-white text-slate-700"><option value="">ทุกเดือนงาน</option></select>
     <input type="text" id="historySearch" oninput="renderHistoryList()" placeholder="ค้นหารหัสงาน / ชื่องาน / ปั๊ม / ผู้ตัด" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-    <div id="historyList" class="space-y-2"></div>
+    <div id="historyList" class="space-y-3"></div>
   </div>
   <div id="historyDetail" class="hidden space-y-2"></div>
 </div>
@@ -767,7 +803,7 @@ function renderMetalCalcRows(metals) {
   keys.forEach(metalName => {
     const bomVal = metals[metalName];
     const card = document.createElement('div');
-    card.className = 'metal-card p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-sm';
+    card.className = 'metal-card p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 shadow-sm';
     card.dataset.bom = bomVal; card.dataset.metal = metalName;
     card.innerHTML = `
       <div class="flex justify-between items-center border-b border-slate-200 pb-2">
@@ -1905,7 +1941,7 @@ function renderHistoryList() {
     const pn = planNoteOf(j);
     const planNoteLine = pn ? `<div class="text-[11px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 inline-block mb-0.5">📝 ${esc(pn)}</div>` : '';
 
-    return `<button type="button" data-id="${esc(j.id)}" onclick="openHistoryJob(this.dataset.id)" class="w-full text-left p-3 border rounded-2xl shadow-sm ${cls}">
+    return `<button type="button" data-id="${esc(j.id)}" onclick="openHistoryJob(this.dataset.id)" class="w-full text-left p-4 border rounded-2xl shadow-sm ${cls}">
       <div class="flex justify-between items-center">
         <span class="font-extrabold text-sm ${titleCls}">${adj ? '<i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก' : esc(j.jobCode)}${badge}${monthBadge}</span>
         <span class="text-xs font-bold ${j.cancelled ? 'text-red-700' : 'text-slate-500'}">${esc(j.time)}</span>
@@ -2217,7 +2253,7 @@ function cutDisplay(name) {
   }
 
   let html = `<table class="cut-table"><thead><tr>
-    <th>ลำดับ</th><th>ชนิด</th><th>ขนาด</th><th>จำนวน</th><th>รวม</th><th>BOM</th>
+    <th>ลำดับ</th><th>ชนิด</th><th>ขนาด</th><th>จำนวน</th><th>BOM</th><th>รวม</th>
   </tr></thead><tbody>`;
   group.rows.forEach(row => {
     const extra = row['รวมท้าย'] || '';
@@ -2225,12 +2261,12 @@ function cutDisplay(name) {
     const badge = type ? cutTypeBadge(type) : '';
     const rowCls = extra !== '' ? 'group-end' : '';
     html += `<tr class="${rowCls}">
-      <td>${esc(row['ลำดับ'])}</td>
-      <td>${badge}</td>
-      <td>${esc(row['ขนาด (cm)'])}</td>
-      <td>${esc(row['จำนวน'])}</td>
-      <td><strong>${esc(row['BOM'])}</strong></td>
-      <td class="${extra ? 'font-bold text-slate-900' : ''}">${esc(extra)}</td>
+      <td data-label="ลำดับ">${esc(row['ลำดับ'])}</td>
+      <td data-label="ชนิด">${badge}</td>
+      <td data-label="ขนาด">${esc(row['ขนาด (cm)'])}</td>
+      <td data-label="จำนวน">${esc(row['จำนวน'])}</td>
+      <td data-label="BOM"><strong>${esc(row['BOM'])}</strong></td>
+      <td data-label="รวม" class="${extra ? 'font-bold text-slate-900' : ''}">${esc(extra)}</td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -2408,6 +2444,18 @@ async function copyStockSummary() {
   else { btn.innerHTML = label; btn.disabled = false; await uiAlert('คัดลอกอัตโนมัติไม่ได้ กดค้างที่ข้อความแล้วคัดลอกเอง:\n\n' + text); }
 }
 
+function applyTheme() {
+  const b = document.getElementById('themeBtn');
+  const dark = document.documentElement.classList.contains('dark');
+  if (b) b.innerHTML = dark ? '<i class="fa-solid fa-sun"></i> โหมดสว่าง' : '<i class="fa-solid fa-moon"></i> โหมดมืด';
+}
+function toggleTheme() {
+  const dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  try { localStorage.setItem('bomcal_theme', dark ? 'dark' : 'light'); } catch (e) {}
+  applyTheme();
+}
+applyTheme();
 initPlanMonthSelect();
 loadPlan();
 loadUnits();
