@@ -21,6 +21,15 @@ button{transition:transform .08s ease,background-color .15s}
 button:active{transform:scale(.97)}
 .skel{height:64px;border-radius:14px;background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:skel 1.2s ease-in-out infinite}
 @keyframes skel{to{background-position:-200% 0}}
+.low-stock{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+html.dark .low-stock{background:rgba(245,158,11,.2);color:#fde68a;border-color:#b45309}
+.toast-wrap{position:fixed;top:12px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200001;pointer-events:none}
+.toast{background:#0f172a;color:#fff;font-size:13px;font-weight:700;padding:10px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:toastIn .25s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.confetti{position:fixed;top:-12px;width:8px;height:12px;z-index:200002;pointer-events:none;animation:confFall linear forwards}
+@keyframes confFall{to{transform:translateY(110vh) rotate(720deg);opacity:.9}}
+.tab-enter{animation:tabIn .22s ease-out}
+@keyframes tabIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 html.dark{color-scheme:dark}
 html.dark body{background:#0b1220!important;color:#e2e8f0!important}
 html.dark .bg-white{background:#1e293b!important}
@@ -124,7 +133,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 <body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
 <div class="w-full max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 p-3 pt-4 shadow-md space-y-3 mt-1">
 
-<div class="flex justify-end -mt-1"><button id="themeBtn" type="button" onclick="toggleTheme()" class="px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-600"></button></div>
+<div class="flex justify-between items-center -mt-1"><span id="lastUpd" class="text-[11px] font-bold text-slate-400"></span><button id="themeBtn" type="button" onclick="toggleTheme()" class="px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-600"></button></div>
 <!-- แผนงาน -->
 <div id="pagePlan" class="page active space-y-3">
   <div class="text-center py-0.5"><span class="inline-block border-2 border-blue-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">แผนงานประจำเดือน</span></div>
@@ -552,6 +561,8 @@ function switchTab(tab) {
   });
   closeBomSheet();
   window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  const pgEl = document.getElementById({ plan: 'pagePlan', calc: 'pageCalc', stock: 'pageStock', history: 'pageHistory', cut: 'pageCut' }[tab]);
+  if (pgEl) { pgEl.classList.remove('tab-enter'); void pgEl.offsetWidth; pgEl.classList.add('tab-enter'); }
   if (tab === 'stock') { loadStock(); loadSummary(); }
   if (tab === 'plan' && !planEditing) { loadPlan(); loadUnits(); loadHistory(); }
   if (tab === 'history') {
@@ -848,7 +859,7 @@ const cacheGet = k => { try { return JSON.parse(localStorage.getItem('bomcal_c_'
 const cacheSet = (k, v) => { try { localStorage.setItem('bomcal_c_' + k, JSON.stringify(v)); } catch (e) {} };
 const inflight = {};
 function sharedFetch(key, fn) {
-  if (!inflight[key]) inflight[key] = fn().finally(() => { delete inflight[key]; });
+  if (!inflight[key]) inflight[key] = fn().finally(() => { delete inflight[key]; markUpdated(); });
   return inflight[key];
 }
 const loadStock = () => sharedFetch('stock', fetchStock);
@@ -868,12 +879,14 @@ function renderStockTable() {
   body.innerHTML = METAL_COLS.map((m, i) => {
     const q = stockMap[m.code];
     const out = q !== undefined && q <= 0;
+    const low = q !== undefined && q > 0 && q <= LOW_STOCK_CM;
     const txt = q === undefined ? '-' : formatNum(q);
     return `<tr class="${out ? 'bg-rose-100' : i % 2 ? 'bg-slate-50' : 'bg-white'}">
-      <td class="py-1.5 px-2 font-bold ${out ? 'text-rose-800' : 'text-slate-800'}">${esc(m.name)}${out ? ' <span class="ml-1 text-[10px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full">หมด</span>' : ''}</td>
+      <td class="py-1.5 px-2 font-bold ${out ? 'text-rose-800' : 'text-slate-800'}">${esc(m.name)}${out ? ' <span class="ml-1 text-[10px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full">หมด</span>' : ''}${low ? ' <span class="ml-1 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">ใกล้หมด</span>' : ''}</td>
       <td class="py-1.5 px-2 text-[11px] font-semibold text-slate-400">${esc(m.code)}</td>
-      <td class="py-1.5 px-2 text-right font-extrabold ${out ? 'text-rose-700' : 'text-slate-900'}">${txt}</td></tr>`;
+      <td data-cnt="${m.code}" data-to="${q === undefined ? '' : q}" class="py-1.5 px-2 text-right font-extrabold ${out ? 'text-rose-700' : low ? 'text-amber-700' : 'text-slate-900'}">${txt}</td></tr>`;
   }).join('');
+  body.querySelectorAll('td[data-cnt]').forEach(td => { if (td.dataset.to !== '') countUpKey(td, td.dataset.cnt, Number(td.dataset.to), formatNum); });
   const up = document.getElementById('stockUpdated');
   if (up) up.textContent = stockLoadedAt ? 'อัปเดต ' + stockLoadedAt.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }) : 'กำลังโหลด...';
 }
@@ -888,6 +901,7 @@ function refreshStockBadges() {
       const out = q <= 0;
       badge.className = 'stock-badge text-[11px] font-bold text-right ' + (out ? 'text-white bg-rose-600 rounded-lg px-2 py-1 text-center' : 'text-slate-500');
       badge.textContent = out ? `สต็อกหมด (คงเหลือ ${formatNum(q)} ซม.)` : `สต็อกคงเหลือ: ${formatNum(q)} ซม.`;
+      if (!out && q <= LOW_STOCK_CM) { badge.className = 'stock-badge text-[11px] font-bold text-right low-stock rounded-lg px-2 py-1'; badge.textContent = `ใกล้หมด · คงเหลือ ${formatNum(q)} ซม.`; }
     } else { badge.className = 'stock-badge text-[11px] font-bold text-slate-500 text-right'; badge.textContent = 'สต็อก: ไม่พบรหัส'; }
   });
 }
@@ -1050,7 +1064,7 @@ async function commitStock() {
       loadHistory();
       clearJobPanel();
       loadStock();
-      await uiAlert('ตัดสต็อกเรียบร้อย');
+      toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
     } else await uiAlert('ไม่สำเร็จ:\n' + (j.message || j.error));
   } catch (e) {
     hideBusy();
@@ -1227,6 +1241,7 @@ function renderPlan() {
     s.items.push({ r, i });
   });
 
+  const doneNow = [];
   let html = '';
   sections.forEach(sec => {
     const sum = sec.items.reduce((a, x) => a + (Number(x.r.qty) || 0), 0);
@@ -1254,7 +1269,8 @@ function renderPlan() {
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
-        const prCell = pr ? `<div class="font-extrabold text-xs" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total} ประเภท</div><div class="plan-bar"><i style="width:${pr.pct}%;background:${col}"></i></div>` : '-';
+        if (pr && pr.pct >= 100) doneNow.push(r.code + '|' + r.qty);
+        const prCell = pr ? `<div class="flex flex-col items-center gap-0.5"><svg width="34" height="34" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#cbd5e1" stroke-width="4"/><circle cx="18" cy="18" r="15.5" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" transform="rotate(-90 18 18)" style="transition:stroke-dasharray .6s ease"/></svg><div class="font-extrabold text-[11px]" style="color:${col}">${pr.pct}%</div><div class="text-[9px] text-slate-400">${pr.cut}/${pr.total}</div></div>` : '-';
         html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
@@ -1276,6 +1292,12 @@ function renderPlan() {
   if (!planEditing && planLoaded) html += industryPayHtml();
   if (!planEditing && planLoaded) html += '<button type="button" onclick="openPlanImport()" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-800 font-bold text-sm rounded-xl"><i class="fa-solid fa-camera"></i> เพิ่มงานจากรูปแผน / วางรายการ</button>';
   list.innerHTML = html;
+  if (!planEditing && planLoaded) {
+    const k = 'bomcal_done_' + planMonth;
+    let prev = null; try { prev = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+    try { localStorage.setItem(k, JSON.stringify(doneNow)); } catch (e) {}
+    if (prev && doneNow.some(x => !prev.includes(x))) { confetti(); toast('🎉 มีงานเสร็จ 100% แล้ว'); }
+  }
 
   foot.innerHTML = planEditing
     ? '<button type="button" onclick="cancelPlanEdit()" class="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-xl">ยกเลิก</button><button type="button" onclick="savePlanEdit()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-floppy-disk"></i> บันทึกแผน</button>'
@@ -2076,7 +2098,7 @@ async function commitEdit() {
     switchTab('history');   // switchTab จะโหลดประวัติเอง และคำขอซ้ำจะรวมเป็นอันเดียว
     await Promise.all([loadHistory(), loadStock(), loadSummary()]);
     if (historyJobs.some(x => String(x.id) === String(newId))) openHistoryJob(newId);
-    await uiAlert('แก้ไขรายการและปรับสต็อกเรียบร้อย');
+    toast('แก้ไขรายการและปรับสต็อกเรียบร้อย ✅'); vibrate(60);
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')\nอย่าเพิ่งกดซ้ำ ให้ตรวจประวัติก่อน'); }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
 }
@@ -2105,7 +2127,7 @@ async function cancelJob(id) {
     }
     await loadHistory(); loadStock(); if (historyJobs.some(x => String(x.id) === String(id))) openHistoryJob(id); else showHistoryList();
     hideBusy();
-    await uiAlert('ยกเลิกรายการและคืนสต็อกเรียบร้อย');
+    toast('ยกเลิกรายการและคืนสต็อกเรียบร้อย'); vibrate(60);
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
 }
 
@@ -2450,6 +2472,64 @@ function toggleTheme() {
   try { localStorage.setItem('bomcal_theme', dark ? 'dark' : 'light'); } catch (e) {}
   applyTheme();
 }
+// ===== ลูกเล่นและการใช้งาน =====
+const LOW_STOCK_CM = 100;   // สต็อกต่ำกว่าหรือเท่ากับค่านี้ (ซม.) ถือว่าใกล้หมด
+function markUpdated() {
+  const el = document.getElementById('lastUpd');
+  if (el) el.textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+}
+function toast(msg) {
+  let w = document.getElementById('toastWrap');
+  if (!w) { w = document.createElement('div'); w.id = 'toastWrap'; w.className = 'toast-wrap'; document.body.appendChild(w); }
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; w.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+function confetti(n = 42) {
+  const cols = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'];
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('div'); c.className = 'confetti';
+    c.style.left = (Math.random() * 100) + 'vw'; c.style.background = cols[i % cols.length];
+    c.style.animationDuration = (1.6 + Math.random() * 1.2) + 's'; c.style.animationDelay = (Math.random() * 0.3) + 's';
+    document.body.appendChild(c); setTimeout(() => c.remove(), 3200);
+  }
+}
+const lastShown = {};
+function countUpKey(el, key, to, fmt) {
+  const from = lastShown[key]; lastShown[key] = to;
+  if (from === undefined || from === to || !isFinite(to)) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), D = 450;
+  const step = t => { const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+const TAB_ORDER = ['plan', 'calc', 'stock', 'history', 'cut'];
+const TAB_PAGE = { plan: 'pagePlan', calc: 'pageCalc', stock: 'pageStock', history: 'pageHistory', cut: 'pageCut' };
+function currentTabKey() { return TAB_ORDER.find(k => document.getElementById(TAB_PAGE[k]).classList.contains('active')) || 'plan'; }
+function refreshCurrentTab() {
+  toast('กำลังรีเฟรช...');
+  const cur = currentTabKey();
+  if (cur === 'plan') { if (!planEditing) { loadPlan(); loadUnits(); } loadHistory(); }
+  else if (cur === 'stock') { loadStock(); loadSummary(); }
+  else if (cur === 'history') loadHistory();
+  else if (cur === 'cut') { cutLoaded = false; loadCutData(); }
+  else loadStock();
+}
+let tsX = 0, tsY = 0, tsT = 0, pullStart = false;
+document.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; tsT = Date.now(); pullStart = window.scrollY === 0;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!e.changedTouches.length) return;
+  if (document.querySelector('.fixed.inset-0:not(.hidden), #busyOverlay')) return;   // ไม่ทำงานตอนมีกล่องหรือหน้าต่างเปิดอยู่
+  const dx = e.changedTouches[0].clientX - tsX, dy = e.changedTouches[0].clientY - tsY;
+  if (pullStart && dy > 80 && Math.abs(dx) < 60 && Date.now() - tsT < 900) { refreshCurrentTab(); return; }
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6 &&
+      !e.target.closest('table,input,select,textarea,.overflow-x-auto,.overflow-y-auto,.overflow-hidden,#calcModal,#toastWrap')) {
+    const i = TAB_ORDER.indexOf(currentTabKey());
+    switchTab(TAB_ORDER[(i + (dx < 0 ? 1 : -1) + TAB_ORDER.length) % TAB_ORDER.length]);
+  }
+}, { passive: true });
 applyTheme();
 initPlanMonthSelect();
 loadPlan();
