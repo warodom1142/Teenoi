@@ -1918,11 +1918,12 @@ function editBtnHtml(j) {
   return `<button type="button" data-id="${esc(j.id)}" onclick="editJob(this.dataset.id)" class="w-full py-2.5 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen"></i> แก้ไขรายการ</button>`;
 }
 // กดแก้ไขรายการ -> เปิดหน้าคำนวณเหล็กตามงาน พร้อมค่าเดิมของรายการ แก้แล้วกดยืนยันการแก้ไข
-function editJob(id) {
+async function editJob(id) {
   const card = historyJobs.find(x => String(x.id) === String(id));
   if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
   const entry = bomEntriesOf(card.jobCode).find(e => e.pump === card.pump);
   if (!entry) return uiAlert(`ไม่พบงาน ${card.jobCode} (${card.pump}) ใน BOM จึงแก้ไขไม่ได้`);
+  if (!(await uiDialog('⚠️ ยืนยันการแก้ไขรายการ?\n\nระบบจะคืนสต็อกของรอบเดิมทั้งหมด แล้วตัดตามค่าใหม่\nประวัติเดิมจะขึ้นว่า "ยกเลิกแล้ว"\n\nควรตรวจให้แน่ใจก่อนว่าต้องการแก้ไขรายการนี้จริง', true))) return;
   editTarget = card;
   currentActiveJob = entry;
   mergeTarget = null;
