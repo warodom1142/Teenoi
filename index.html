@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ระบบคำนวณงาน & BOM สเตนเลส</title>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://docs.google.com">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,6 +16,23 @@ html,body{scroll-behavior:smooth;overflow-y:auto;font-family:'Kanit',sans-serif}
 body{-webkit-font-smoothing:antialiased;color:#1e293b}
 td,th,.font-extrabold,.text-2xl,.text-lg,.text-base{font-variant-numeric:tabular-nums}
 h1,h2,h3{letter-spacing:-.01em}
+button{transition:transform .08s ease,background-color .15s}
+button:active{transform:scale(.97)}
+.skel{height:64px;border-radius:14px;background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:skel 1.2s ease-in-out infinite}
+@keyframes skel{to{background-position:-200% 0}}
+@media (prefers-color-scheme:dark){
+  body{background:#0f172a!important;color:#e2e8f0!important}
+  .bg-white{background:#1e293b!important}
+  .bg-slate-50,.bg-slate-100{background:#0f172a!important}
+  .bg-slate-200{background:#334155!important}
+  .text-slate-800,.text-slate-700,.text-slate-900,.text-slate-600{color:#e2e8f0!important}
+  .text-slate-500,.text-slate-400{color:#94a3b8!important}
+  .border-slate-200,.border-slate-300{border-color:#334155!important}
+  .nav-btn{color:#94a3b8}
+  .nav-btn.nav-active{background:#1e3a8a;color:#dbeafe}
+  input,select,textarea{background:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
+  .plan-table td,.cut-table td,.split-table td{background:#1e293b;color:#e2e8f0}
+}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 body.adjust-mode .status-banner,body.adjust-mode .scrap-box{display:none}
@@ -86,7 +107,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <button type="button" onclick="refreshPlan()" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
   </div>
   <div class="flex items-start gap-2"><div id="planStatus" class="flex-1 min-w-0 text-xs font-bold text-slate-500 leading-snug">กำลังโหลดแผน...</div><div id="planBadge" class="shrink-0"></div></div>
-  <div id="planList" class="space-y-3"></div>
+  <div id="planList" class="space-y-3"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   <div id="planFooter" class="flex gap-2"></div>
 </div>
 
@@ -413,6 +434,8 @@ async function loadDatabaseFromGoogleSheet() {
   if (isLoadingBom) return;
   isLoadingBom = true;
   const status = document.getElementById('databaseStatus');
+  const cb = cacheGet('bom');
+  if (cb && !bomDatabase.length) { bomDatabase = cb.concat([makeAdjustJob()]); searchBom(); renderPlan(); renderHistoryList(); }
   status.textContent = 'กำลังโหลดข้อมูลจาก Google Sheets...';
   status.className = 'text-xs font-bold text-blue-600';
   try {
@@ -447,6 +470,7 @@ async function loadDatabaseFromGoogleSheet() {
     });
     if (newDatabase.length === 0) throw new Error('ไม่พบรายการ BOM');
 
+    cacheSet('bom', newDatabase);
     bomDatabase = newDatabase;
     if (missing.length) {
       status.textContent = `โหลด ${bomDatabase.length.toLocaleString('th-TH')} รายการ แต่ไม่พบรหัสในหัวตาราง (ใช้ตำแหน่งเดิม): ${missing.join(', ')}`;
@@ -794,6 +818,8 @@ function resetCalcForm() { document.querySelectorAll('.withdraw-input,.return-in
 
 // ===== สต็อก =====
 // โหลดซ้อน: ถ้ามีคำขอชนิดเดียวกันค้างอยู่ ให้ใช้คำขอเดิม ไม่ยิงซ้ำ
+const cacheGet = k => { try { return JSON.parse(localStorage.getItem('bomcal_c_' + k)); } catch (e) { return null; } };
+const cacheSet = (k, v) => { try { localStorage.setItem('bomcal_c_' + k, JSON.stringify(v)); } catch (e) {} };
 const inflight = {};
 function sharedFetch(key, fn) {
   if (!inflight[key]) inflight[key] = fn().finally(() => { delete inflight[key]; });
@@ -801,10 +827,11 @@ function sharedFetch(key, fn) {
 }
 const loadStock = () => sharedFetch('stock', fetchStock);
 async function fetchStock() {
+  if (!stockLoadedAt) { const c = cacheGet('stock'); if (c) { stockMap = c.m; stockLoadedAt = new Date(c.t); refreshStockBadges(); renderStockTable(); } }
   try {
     const r = await fetch(`${STOCK_API}?token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
-    if (j.ok) { stockMap = j.stock; stockLoadedAt = new Date(); }
+    if (j.ok) { stockMap = j.stock; stockLoadedAt = new Date(); cacheSet('stock', { m: stockMap, t: stockLoadedAt.getTime() }); }
   } catch (e) { console.error('โหลดสต็อกไม่สำเร็จ', e); }
   refreshStockBadges(); renderStockTable();
 }
@@ -1028,10 +1055,11 @@ function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.
 
 const loadUnits = () => sharedFetch('units', fetchUnits);
 async function fetchUnits() {
+  if (!Object.keys(unitMap).length) { const c = cacheGet('units'); if (c) { unitMap = c; if (!planEditing) renderPlan(); } }
   try {
     const r = await fetch(`${STOCK_API}?action=units&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
-    if (j.ok && j.units) { unitMap = j.units; if (!planEditing) renderPlan(); }
+    if (j.ok && j.units) { unitMap = j.units; cacheSet('units', unitMap); if (!planEditing) renderPlan(); }
   } catch (e) { console.error('โหลดยูนิตไม่สำเร็จ', e); }
 }
 async function saveUnits(rows) {
@@ -1091,11 +1119,12 @@ function onPlanMonthChange() { planMonth = document.getElementById('planMonthSel
 
 const loadPlan = () => sharedFetch('plan', fetchPlan);
 async function fetchPlan() {
+  if (!planLoaded) { const c = cacheGet('plan'); if (c) { planAll = c; planLoaded = true; if (!planEditing) renderPlan(); } }
   try {
     const r = await fetch(`${STOCK_API}?action=plan&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
     if (!j.ok) throw new Error(j.message || j.error);
-    planAll = j.plan || []; planLoaded = true;
+    planAll = j.plan || []; planLoaded = true; cacheSet('plan', planAll);
   } catch (e) {
     document.getElementById('planStatus').textContent = 'โหลดแผนไม่สำเร็จ: ' + e.message;
     return;
@@ -1622,12 +1651,13 @@ let summaryData = null;
 async function loadSummary() {
   const box = document.getElementById('stockSummary');
   if (!box) return;
-  box.innerHTML = '<div class="text-center text-xs font-bold text-slate-500 py-3">กำลังโหลดสรุป...</div>';
+  if (!summaryData) { const c = cacheGet('summary'); if (c) { summaryData = c; renderSummary(); } }
+  if (!summaryData) box.innerHTML = '<div class="text-center text-xs font-bold text-slate-500 py-3">กำลังโหลดสรุป...</div>';
   try {
     const r = await fetch(`${STOCK_API}?action=summary&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
     if (!j.ok) throw new Error(j.message || j.error);
-    summaryData = j;
+    summaryData = j; cacheSet('summary', j);
     renderSummary();
   } catch (e) {
     box.innerHTML = `<div class="text-xs font-bold text-red-600">โหลดสรุปไม่สำเร็จ: ${esc(e.message)}</div>`;
@@ -1803,10 +1833,12 @@ const loadHistory = () => sharedFetch('history', fetchHistory);
 async function fetchHistory() {
   const st = document.getElementById('historyStatus');
   st.textContent = 'กำลังโหลด...';
+  if (!historyJobs.length) { const c = cacheGet('history'); if (c) { historyJobs = consolidateHistory(c); renderHistoryList(); if (!planEditing) renderPlan(); } }
   try {
     const r = await fetch(`${STOCK_API}?action=history&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
     if (!j.ok) throw new Error(j.message || j.error);
+    cacheSet('history', j.jobs);
     historyJobs = consolidateHistory(j.jobs);
     renderHistoryList();
     if (!planEditing) renderPlan();
@@ -2100,6 +2132,7 @@ async function loadCutData() {
   loading.className = 'text-center text-slate-500 italic text-xs py-3';
   loading.textContent = 'กำลังโหลดข้อมูลรายการตัด...';
   st.textContent = 'กำลังโหลด...';
+  if (!cutLoaded) { const cc = cacheGet('cut'); if (cc) { cutData = cc; cutLoaded = true; loading.style.display = 'none'; st.textContent = `${cutData.length.toLocaleString('th-TH')} แถว (กำลังอัปเดต)`; } }
   try {
     const r = await fetch(cutUrl());
     if (!r.ok) throw new Error('ไม่สามารถเชื่อมต่อ Google Sheets');
@@ -2111,6 +2144,7 @@ async function loadCutData() {
       head.forEach((h, i) => { o[h] = cleanText(row[i]); });
       return o;
     });
+    cacheSet('cut', cutData);
     cutLoaded = true;
     loading.style.display = 'none';
     st.textContent = `${cutData.length.toLocaleString('th-TH')} แถว`;
