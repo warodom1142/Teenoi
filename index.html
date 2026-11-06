@@ -1923,7 +1923,7 @@ async function editJob(id) {
   if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
   const entry = bomEntriesOf(card.jobCode).find(e => e.pump === card.pump);
   if (!entry) return uiAlert(`ไม่พบงาน ${card.jobCode} (${card.pump}) ใน BOM จึงแก้ไขไม่ได้`);
-  if (!(await uiDialog('⚠️ ยืนยันการแก้ไขรายการ?\n\nระบบจะคืนสต็อกของรอบเดิมทั้งหมด แล้วตัดตามค่าใหม่\nประวัติเดิมจะขึ้นว่า "ยกเลิกแล้ว"\n\nควรตรวจให้แน่ใจก่อนว่าต้องการแก้ไขรายการนี้จริง', true))) return;
+  if (!(await uiDialog('⚠️ กำลังแก้ไขรายการที่ตัดสต็อกไปแล้ว', true))) return;
   editTarget = card;
   currentActiveJob = entry;
   mergeTarget = null;
