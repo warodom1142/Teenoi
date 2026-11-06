@@ -317,7 +317,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <select id="cutModelSelect" onchange="cutOnModelSelected()" class="w-full p-2 border-2 border-sky-400 rounded-lg font-bold text-sm bg-sky-50 text-sky-900"><option value="">-- กรุณาเลือกรุ่น --</option></select>
   </div>
   <div id="cutLoading" class="text-center text-slate-500 italic text-xs py-3">กดแท็บนี้เพื่อโหลดข้อมูลรายการตัด</div>
-  <div id="cutInfoCard" class="hidden p-2.5 bg-sky-50 border-l-4 border-sky-600 rounded-lg font-bold text-sky-900" style="font-size:13.8px">📦 รุ่นที่พบ: <span id="cutModelName"></span></div>
+  <div id="cutInfoCard" class="hidden p-2.5 bg-sky-50 border-l-4 border-sky-600 rounded-lg font-bold text-sky-900" style="font-size:13.8px">📦 รุ่นที่พบ: <span id="cutModelName"></span> <span id="cutPumpTag" class="hidden ml-1 px-2 py-0.5 rounded-full bg-sky-600 text-white text-xs font-bold"></span></div>
   <div id="cutImagePreview" class="hidden text-center"><img id="cutProdImage" src="" alt="แบบวาดสินค้า" class="inline-block max-w-[180px] rounded-md border border-slate-300 bg-white p-1" onerror="this.style.display='none'"></div>
   <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><div id="cutResults"></div></div>
   <button id="cutCopyBtn" type="button" onclick="cutCopyImage()" class="hidden w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-xl"><i class="fa-regular fa-image"></i> คัดลอกตารางเป็นรูปภาพ</button>
@@ -2251,7 +2251,7 @@ function cutSearch() {
   if (names.length > 1) {
     const select = document.getElementById('cutModelSelect');
     select.innerHTML = '<option value="">-- กรุณาเลือกรุ่นที่ต้องการ --</option>';
-    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; select.appendChild(o); });
+    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = cutLabelOf(n); select.appendChild(o); });
     dropdown.classList.remove('hidden');
     results.innerHTML = '<p class="text-center text-sky-700 font-bold text-xs py-4">👆 พบหลายรายการ กรุณาเลือกชื่อรุ่นด้านบน</p>';
   } else {
@@ -2260,6 +2260,18 @@ function cutSearch() {
   }
 }
 
+// ดึงชื่อปั๊มออกจากชื่อรุ่น เช่น "1307077 - TRT1000 mini ปั้มกาก" -> "ปั้มกาก"
+function cutPumpOf(name) {
+  const m = String(name || '').match(/(?:ปั้ม|ปั๊ม)\S*/);
+  return m ? m[0] : '';
+}
+// ข้อความในรายการเลือกรุ่น: รหัส + ชื่อรุ่น + ปั๊ม (แยกให้เห็นเมื่อรหัสเดียวกันมีหลายปั๊ม)
+function cutLabelOf(name) {
+  const pump = cutPumpOf(name);
+  const code = (cutGroups[name] && cutGroups[name].code) || '';
+  const base = String(name).replace(/^\s*\S+\s*-\s*/, '').replace(pump, '').replace(/\s+/g, ' ').trim();
+  return [String(code).trim(), base, pump ? '· ' + pump : ''].filter(Boolean).join(' ');
+}
 function cutOnModelSelected() {
   const v = document.getElementById('cutModelSelect').value;
   if (v) cutDisplay(v);
@@ -2269,6 +2281,9 @@ function cutDisplay(name) {
   const group = cutGroups[name];
   if (!group) return;
   document.getElementById('cutModelName').textContent = name;
+  const pumpTag = document.getElementById('cutPumpTag'), pumpName = cutPumpOf(name);
+  pumpTag.textContent = pumpName ? 'ปั๊ม ' + pumpName : '';
+  pumpTag.classList.toggle('hidden', !pumpName);
   document.getElementById('cutInfoCard').classList.remove('hidden');
 
   const code = group.code.toString().trim();
