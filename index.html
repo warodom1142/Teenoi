@@ -763,7 +763,7 @@ function renderMetalCalcRows(metals) {
     c.appendChild(card);
   });
   calculateAllRows();
-  loadStock();
+  refreshStockBadges();   // ใช้สต็อกที่โหลดไว้แล้ว ไม่ดึงใหม่ทุกครั้งที่วาดการ์ด
 }
 
 function calculateRow(card) {
@@ -790,7 +790,14 @@ function calculateAllRows() { document.querySelectorAll('#metalCalcContainer .me
 function resetCalcForm() { document.querySelectorAll('.withdraw-input,.return-input,.scrap-input').forEach(i => i.value = ''); calculateAllRows(); }
 
 // ===== สต็อก =====
-async function loadStock() {
+// โหลดซ้อน: ถ้ามีคำขอชนิดเดียวกันค้างอยู่ ให้ใช้คำขอเดิม ไม่ยิงซ้ำ
+const inflight = {};
+function sharedFetch(key, fn) {
+  if (!inflight[key]) inflight[key] = fn().finally(() => { delete inflight[key]; });
+  return inflight[key];
+}
+const loadStock = () => sharedFetch('stock', fetchStock);
+async function fetchStock() {
   try {
     const r = await fetch(`${STOCK_API}?token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
@@ -952,6 +959,7 @@ async function commitStock() {
   if (isAdj && !adjNote) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
 
   const jobNote = (document.getElementById('jobNoteInput').value || '').trim();
+  await loadStock();   // ดึงสต็อกล่าสุดก่อนแสดงยอดให้ยืนยัน (เผื่อคนอื่นตัดไปแล้ว)
   const r = await uiConfirmTable(items, null);
   if (r === null) return;
   const who = r.name;
@@ -1004,7 +1012,8 @@ let unitMap = {};
 let planAll = [], planMonth = getSavedPlanMonth(), planEditing = false, planDraft = [], planLoaded = false;
 function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
 
-async function loadUnits() {
+const loadUnits = () => sharedFetch('units', fetchUnits);
+async function fetchUnits() {
   try {
     const r = await fetch(`${STOCK_API}?action=units&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
@@ -1066,7 +1075,8 @@ function getSavedPlanMonth() { try { const v = localStorage.getItem('bomcal_plan
 function setSavedPlanMonth(v) { try { localStorage.setItem('bomcal_planMonth', String(v)); } catch (e) {} }
 function onPlanMonthChange() { planMonth = document.getElementById('planMonthSelect').value; setSavedPlanMonth(planMonth); renderPlan(); }
 
-async function loadPlan() {
+const loadPlan = () => sharedFetch('plan', fetchPlan);
+async function fetchPlan() {
   try {
     const r = await fetch(`${STOCK_API}?action=plan&token=${encodeURIComponent(STOCK_TOKEN)}&t=${Date.now()}`);
     const j = await r.json();
@@ -1775,7 +1785,8 @@ function consolidateHistory(jobs) {
   return out.sort((a, b) => (a._ts || 0) - (b._ts || 0));
 }
 
-async function loadHistory() {
+const loadHistory = () => sharedFetch('history', fetchHistory);
+async function fetchHistory() {
   const st = document.getElementById('historyStatus');
   st.textContent = 'กำลังโหลด...';
   try {
@@ -1965,6 +1976,7 @@ async function commitEdit() {
       withdraw: w, ret: r, scrap: s });
   });
   if (!items.length) return uiAlert('ต้องมีเหล็กอย่างน้อย 1 รายการ');
+  await loadStock();   // ดึงสต็อกล่าสุดก่อนแสดงยอดให้ยืนยัน
   const r = await uiConfirmTable(items, null);
   if (r === null) return;
   const who = r.name;
@@ -1984,8 +1996,8 @@ async function commitEdit() {
     if (!j.ok) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข'; return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error)); }
     const newId = j.groupId;
     clearJobPanel();
-    await loadHistory(); loadStock(); loadSummary();
-    switchTab('history');
+    switchTab('history');   // switchTab จะโหลดประวัติเอง และคำขอซ้ำจะรวมเป็นอันเดียว
+    await Promise.all([loadHistory(), loadStock(), loadSummary()]);
     if (historyJobs.some(x => String(x.id) === String(newId))) openHistoryJob(newId);
     await uiAlert('แก้ไขรายการและปรับสต็อกเรียบร้อย');
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')\nอย่าเพิ่งกดซ้ำ ให้ตรวจประวัติก่อน'); }
