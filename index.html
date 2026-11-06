@@ -321,6 +321,10 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
   <div id="cutImagePreview" class="hidden text-center"><img id="cutProdImage" src="" alt="แบบวาดสินค้า" class="inline-block max-w-[180px] rounded-md border border-slate-300 bg-white p-1" onerror="this.style.display='none'"></div>
   <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><div id="cutResults"></div></div>
   <button id="cutCopyBtn" type="button" onclick="cutCopyImage()" class="hidden w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-xl"><i class="fa-regular fa-image"></i> คัดลอกตารางเป็นรูปภาพ</button>
+<div id="cutShareRow" class="hidden grid grid-cols-2 gap-2">
+  <button type="button" onclick="cutShareImage()" class="py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-share-nodes"></i> แชร์รูป</button>
+  <button type="button" onclick="cutSaveImage()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-download"></i> บันทึกรูป</button>
+</div>
 </div>
 
 </div>
@@ -2294,6 +2298,7 @@ function cutDisplay(name) {
   html += '</tbody></table>';
   document.getElementById('cutResults').innerHTML = html;
   document.getElementById('cutCopyBtn').classList.remove('hidden');
+  document.getElementById('cutShareRow').classList.remove('hidden');
 }
 
 
@@ -2372,6 +2377,40 @@ function buildCutCanvas() {
   colX.slice(1).forEach(x => { g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y0 + tableH); g.stroke(); });
   g.strokeStyle = '#cbd5e1'; g.strokeRect(PAD + 0.5, y0 + 0.5, TW - 1, tableH - 1);
   return c;
+}
+// ===== แชร์ / บันทึกรูปรายการตัด =====
+function cutFileName() {
+  const n = (document.getElementById('cutModelName').textContent || '').trim().replace(/[\\/:*?"<>|]+/g, '').slice(0, 40);
+  return 'รายการตัด-' + (n || 'list') + '.png';
+}
+function cutBlobPromise() {
+  const canvas = buildCutCanvas();
+  if (!canvas) return null;
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('สร้างรูปไม่ได้')), 'image/png'));
+}
+async function cutSaveImage() {
+  const blobP = cutBlobPromise(); if (!blobP) return;
+  try {
+    const blob = await blobP;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = cutFileName();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('บันทึกรูปแล้ว');
+  } catch (e) { uiAlert('บันทึกรูปไม่สำเร็จ (' + e.message + ')'); }
+}
+async function cutShareImage() {
+  const blobP = cutBlobPromise(); if (!blobP) return;
+  try {
+    const blob = await blobP;
+    const file = new File([blob], cutFileName(), { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'รายการตัดเหล็ก' }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    toast('เครื่องนี้แชร์รูปไม่ได้ จึงบันทึกรูปแทน');
+    cutSaveImage();
+  } catch (e) { uiAlert('แชร์ไม่สำเร็จ (' + e.message + ')'); }
 }
 async function cutFallbackShare(blobP) {
   try {
