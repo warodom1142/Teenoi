@@ -99,7 +99,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" onclick="openBomSheet()" class="py-3 text-sm font-extrabold bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700"><i class="fa-solid fa-arrows-rotate"></i> เปลี่ยนงาน</button>
       <button type="button" onclick="clearJob()" class="py-3 text-sm font-extrabold bg-rose-600 text-white rounded-xl shadow-sm hover:bg-rose-700"><i class="fa-solid fa-trash-can"></i> ลบงาน</button>
     </div>
-    <div id="editModeBanner" class="hidden mb-1.5 px-3 py-2 rounded-xl bg-amber-400 border-2 border-amber-600 text-amber-950 font-black text-center text-base shadow-md"><i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการ · ไม่ใช่การตัดใหม่</div>
+    <div id="editModeBanner" class="hidden mb-1.5 px-3 py-2 rounded-xl bg-amber-400 border-2 border-amber-600 text-amber-950 font-black text-center text-base shadow-md"><i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการเดิม</div>
     <div id="selectedJobTitle" class="text-sm font-extrabold text-indigo-950 truncate">-- ยังไม่ได้เลือกงาน (กดปุ่ม เปลี่ยนงาน เพื่อเลือก) --</div>
     <div id="selectedJobPump" class="text-xs font-semibold text-indigo-700">ปั๊ม: -</div>
     <div id="mergeInfo" class="hidden text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"></div>
@@ -584,6 +584,7 @@ function updateMergeInfo() {
 
 async function applyJobToCalculator(planQty) {
   if (!currentActiveJob) return;
+  if (editTarget) exitEditMode();
   const job = currentActiveJob;
   mergeTarget = null;
   planQtyLock = Number(planQty) > 0;
@@ -2300,12 +2301,16 @@ async function clearJob() {
 }
 
 // ล้างหน้าคำนวณกลับเป็นยังไม่ได้เลือกงาน (ใช้ทั้งตอนกดลบงาน และหลังตัดสต็อกสำเร็จ)
-function clearJobPanel() {
+// ออกจากโหมดแก้ไข: ซ่อนแถบเตือนและคืนปุ่มยืนยันเป็นการตัดใหม่
+function exitEditMode() {
   editTarget = null;
   const cb = document.getElementById('btnCommit');
   cb.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   cb.classList.add('bg-rose-600', 'hover:bg-rose-700'); cb.classList.remove('bg-amber-500', 'hover:bg-amber-600', 'text-amber-950');
   document.getElementById('editModeBanner').classList.add('hidden');
+}
+function clearJobPanel() {
+  exitEditMode();
   currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
   updateMergeInfo();
   setAdjustMode(false);
