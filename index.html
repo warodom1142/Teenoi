@@ -2405,7 +2405,10 @@ async function cutShareImage() {
     const blob = await blobP;
     const file = new File([blob], cutFileName(), { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'รายการตัดเหล็ก' }); return; }
+      const name = (document.getElementById('cutModelName').textContent || '').trim();
+      const code = (cutGroups[name] && cutGroups[name].code) || '';
+      const label = [code, name].filter(Boolean).join(' ');
+      try { await navigator.share({ files: [file], text: label }); return; }
       catch (e) { if (e && e.name === 'AbortError') return; }
     }
     toast('เครื่องนี้แชร์รูปไม่ได้ จึงบันทึกรูปแทน');
