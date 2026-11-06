@@ -865,7 +865,7 @@ function makeNameInput() {
   return i;
 }
 
-async function uiConfirmTable(items, cands) {
+async function uiConfirmTable(items, cands, freshP) {
   const wrap = document.createElement('div');
   wrap.className = 'max-h-72 overflow-y-auto';
   const nameIn = makeNameInput();
@@ -906,6 +906,17 @@ async function uiConfirmTable(items, cands) {
     ].forEach(([txt, cls]) => { const td = tr.insertCell(); td.textContent = txt; td.className = 'py-1.5 px-1 ' + cls; });
   });
   wrap.appendChild(t);
+  // ถ้าดึงสต็อกล่าสุดเสร็จทีหลัง ให้อัปเดตคอลัมน์ "สต็อกหลังตัด" ในตารางที่เปิดอยู่ (ไม่ต้องรอก่อนแสดงกล่องยืนยัน)
+  if (freshP) freshP.then(() => {
+    [...body.rows].forEach((tr, i) => {
+      const it = items[i]; if (!it) return;
+      const before = stockMap[it.code];
+      const after = before === undefined ? null : before - (it.withdraw - it.ret);
+      const td = tr.cells[3];
+      td.textContent = after === null ? '?' : formatNum(after);
+      td.className = 'py-1.5 px-1 text-right font-extrabold ' + (after !== null && after < 0 ? 'text-red-600' : 'text-slate-800');
+    });
+  });
   const ok = await uiDialog('ยืนยันตัดสต็อก?', true, wrap);
   if (!ok) return null;
   const name = nameIn.value.trim();
@@ -959,8 +970,8 @@ async function commitStock() {
   if (isAdj && !adjNote) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
 
   const jobNote = (document.getElementById('jobNoteInput').value || '').trim();
-  await loadStock();   // ดึงสต็อกล่าสุดก่อนแสดงยอดให้ยืนยัน (เผื่อคนอื่นตัดไปแล้ว)
-  const r = await uiConfirmTable(items, null);
+  const freshP = loadStock();   // ดึงสต็อกล่าสุดในพื้นหลัง ไม่ให้กล่องยืนยันช้า
+  const r = await uiConfirmTable(items, null, freshP);
   if (r === null) return;
   const who = r.name;
   if (!who) return uiAlert('กรุณาใส่ชื่อผู้ตัดสต็อก แล้วกดยืนยันใหม่');
@@ -1976,8 +1987,8 @@ async function commitEdit() {
       withdraw: w, ret: r, scrap: s });
   });
   if (!items.length) return uiAlert('ต้องมีเหล็กอย่างน้อย 1 รายการ');
-  await loadStock();   // ดึงสต็อกล่าสุดก่อนแสดงยอดให้ยืนยัน
-  const r = await uiConfirmTable(items, null);
+  const freshP = loadStock();   // ดึงสต็อกล่าสุดในพื้นหลัง ไม่ให้กล่องยืนยันช้า
+  const r = await uiConfirmTable(items, null, freshP);
   if (r === null) return;
   const who = r.name;
   if (!who) return uiAlert('กรุณาใส่ชื่อผู้แก้ไข แล้วกดยืนยันใหม่');
