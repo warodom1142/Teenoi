@@ -1879,7 +1879,7 @@ function openHistoryJob(id) {
 
   const banner = j.cancelled
     ? `<div class="p-3 bg-rose-100 border-2 border-rose-400 rounded-2xl text-xs font-extrabold text-rose-800"><i class="fa-solid fa-ban"></i> ยกเลิกแล้ว · โดย ${esc(j.cancelledBy || '-')} · ${esc(j.cancelledAt || '')}<div class="font-bold mt-0.5">สต็อกถูกคืนแล้วทั้งหมด (รวมทุกวันที่ตัดของงานนี้)</div></div>`
-    : `<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
+    : `${editBtnHtml(j)}<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
 
   const cards = j.items.map(it => {
     const d = Number(it.diff) || 0, used = Number(it.used) || 0, chg = -used;
@@ -1908,6 +1908,66 @@ function openHistoryJob(id) {
   document.getElementById('historyListView').classList.add('hidden');
   box.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
+function editBtnHtml(j) {
+  if (j.cancelled || j.jobCode === 'ADJUST') return '';
+  return `<button type="button" data-id="${esc(j.id)}" onclick="editJob(this.dataset.id)" class="w-full py-2.5 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen"></i> แก้ไขรายการ</button>`;
+}
+async function editJob(id) {
+  const card = historyJobs.find(x => String(x.id) === String(id));
+  if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
+  const wrap = document.createElement('div');
+  wrap.className = 'space-y-2';
+  const box = document.createElement('div');
+  box.className = 'space-y-2 max-h-[45vh] overflow-y-auto';
+  const inputCls = 'w-full p-1.5 border-2 border-slate-300 rounded-lg font-bold text-sm text-center';
+  const rowsIn = [];
+  (card.items || []).forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'p-2 bg-slate-50 border border-slate-200 rounded-xl';
+    row.innerHTML = `<div class="text-xs font-extrabold text-indigo-950 mb-1">${esc(it.name)}</div>
+      <div class="grid grid-cols-3 gap-1.5 text-[10px] font-bold text-center">
+        <label>เบิก<input type="number" inputmode="decimal" value="${Number(it.withdraw) || 0}" class="${inputCls}"></label>
+        <label>คืน<input type="number" inputmode="decimal" value="${Number(it.ret) || 0}" class="${inputCls}"></label>
+        <label>เศษทิ้ง<input type="number" inputmode="decimal" value="${Number(it.scrap) || 0}" class="${inputCls}"></label>
+      </div>`;
+    box.appendChild(row);
+    rowsIn.push({ it, row });
+  });
+  wrap.appendChild(box);
+  const keep = document.createElement('label');
+  keep.className = 'flex items-center gap-2 text-xs font-bold text-slate-700';
+  keep.innerHTML = '<input type="checkbox" id="editKeepDate" class="w-4 h-4"> ใช้วันที่ตัดเดิม (ถ้าไม่ติ๊ก จะใช้วันที่แก้ไข)';
+  wrap.appendChild(keep);
+  const nameIn = makeNameInput();
+  nameIn.placeholder = 'ชื่อผู้แก้ไข (จำเป็น)';
+  const pinIn = document.createElement('input');
+  pinIn.type = 'password'; pinIn.inputMode = 'numeric'; pinIn.autocomplete = 'off';
+  pinIn.placeholder = 'รหัสยืนยัน (จำเป็น)';
+  pinIn.className = 'w-full p-2 border-2 border-indigo-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  wrap.appendChild(nameIn); wrap.appendChild(pinIn);
+  if (!(await uiDialog('แก้ไขรายการนี้?\nระบบจะคืนสต็อกของรอบเดิมทั้งหมด แล้วตัดตามค่าใหม่ในครั้งเดียว\nประวัติเดิมยังอยู่ แสดงเป็น "ยกเลิกแล้ว"', true, wrap))) return;
+  if (pinIn.value.trim() !== CANCEL_PIN) return uiAlert('รหัสไม่ถูกต้อง ไม่สามารถแก้ไขรายการได้');
+  const who = nameIn.value.trim();
+  if (!who) return uiAlert('กรุณาใส่ชื่อผู้แก้ไข');
+  const items = rowsIn.map(({ it, row }) => {
+    const v = [...row.querySelectorAll('input')].map(i => parseFloat(i.value) || 0);
+    return { code: it.code, name: it.name, bom: Number(it.bom) || 0, withdraw: v[0], ret: v[1], scrap: v[2] };
+  }).filter(x => x.withdraw || x.ret || x.scrap);
+  if (!items.length) return uiAlert('ต้องมีเหล็กอย่างน้อย 1 รายการ');
+  saveName(who);
+  showBusy('กำลังแก้ไขรายการและปรับสต็อก');
+  try {
+    const j = await postApi({ action: 'edit', gids: card.gids || [card.id], items: items,
+      keepDate: document.getElementById('editKeepDate').checked, user: who, by: who });
+    hideBusy();
+    if (!j.ok) return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error));
+    await loadHistory(); loadStock(); loadSummary();
+    if (historyJobs.some(x => String(x.id) === String(j.groupId))) openHistoryJob(j.groupId); else showHistoryList();
+    await uiAlert('แก้ไขรายการและปรับสต็อกเรียบร้อย');
+  } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
 }
 
 async function cancelJob(id) {
