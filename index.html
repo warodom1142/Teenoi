@@ -299,6 +299,7 @@ const METAL_CODE = {};
 METAL_COLS.forEach(m => { METAL_CODE[m.name] = m.code; });
 
 let bomDatabase = [], currentActiveJob = null, isLoadingBom = false;
+let editTarget = null;   // การ์ดรายการที่กำลังแก้ไข (ไม่ใช่การตัดใหม่)
 let stockMap = {}, stockLoadedAt = null, submitId = null, historyJobs = [];
 let cutData = [], cutGroups = {}, cutLoaded = false;
 
@@ -931,6 +932,7 @@ async function postApi(payload) {
 }
 
 async function commitStock() {
+  if (editTarget) return commitEdit();
   if (!currentActiveJob) return uiAlert('ยังไม่ได้เลือกงาน');
   const qty = parseFloat(document.getElementById('globalQty').value) || 0;
   const items = [];
@@ -1915,59 +1917,74 @@ function editBtnHtml(j) {
   if (j.cancelled || j.jobCode === 'ADJUST') return '';
   return `<button type="button" data-id="${esc(j.id)}" onclick="editJob(this.dataset.id)" class="w-full py-2.5 mb-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen"></i> แก้ไขรายการ</button>`;
 }
-async function editJob(id) {
+// กดแก้ไขรายการ -> เปิดหน้าคำนวณเหล็กตามงาน พร้อมค่าเดิมของรายการ แก้แล้วกดยืนยันการแก้ไข
+function editJob(id) {
   const card = historyJobs.find(x => String(x.id) === String(id));
   if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
-  const wrap = document.createElement('div');
-  wrap.className = 'space-y-2';
-  const box = document.createElement('div');
-  box.className = 'space-y-2 max-h-[45vh] overflow-y-auto';
-  const inputCls = 'w-full p-1.5 border-2 border-slate-300 rounded-lg font-bold text-sm text-center';
-  const rowsIn = [];
+  const entry = bomEntriesOf(card.jobCode).find(e => e.pump === card.pump);
+  if (!entry) return uiAlert(`ไม่พบงาน ${card.jobCode} (${card.pump}) ใน BOM จึงแก้ไขไม่ได้`);
+  editTarget = card;
+  currentActiveJob = entry;
+  mergeTarget = null;
+  planQtyLock = true;
+  currentJobMonth = String(card.month || ''); setCurrentJobMonth(currentJobMonth);
+  document.getElementById('jobMonthSelect').value = currentJobMonth;
+  setAdjustMode(false);
+  document.getElementById('selectedJobTitle').textContent = `✏️ แก้ไข: ${card.jobCode} - ${entry.name}`;
+  document.getElementById('selectedJobPump').textContent = `ปั๊ม: ${entry.pump}`;
+  document.getElementById('globalQty').value = Number(card.qty) || 1;
+  updateMergeInfo();
+  renderMetalCalcRows(entry.metals);
+  // เติมค่าเดิมของรายการลงในแต่ละเหล็ก
   (card.items || []).forEach(it => {
-    const row = document.createElement('div');
-    row.className = 'p-2 bg-slate-50 border border-slate-200 rounded-xl';
-    row.innerHTML = `<div class="text-xs font-extrabold text-indigo-950 mb-1">${esc(it.name)}</div>
-      <div class="grid grid-cols-3 gap-1.5 text-[10px] font-bold text-center">
-        <label>เบิก<input type="number" inputmode="decimal" value="${Number(it.withdraw) || 0}" class="${inputCls}"></label>
-        <label>คืน<input type="number" inputmode="decimal" value="${Number(it.ret) || 0}" class="${inputCls}"></label>
-        <label>เศษทิ้ง<input type="number" inputmode="decimal" value="${Number(it.scrap) || 0}" class="${inputCls}"></label>
-      </div>`;
-    box.appendChild(row);
-    rowsIn.push({ it, row });
+    const mc = document.querySelector(`#metalCalcContainer .metal-card[data-metal="${CSS.escape(it.name)}"]`);
+    if (!mc) return;
+    mc.querySelector('.withdraw-input').value = Number(it.withdraw) || '';
+    mc.querySelector('.return-input').value = Number(it.ret) || '';
+    mc.querySelector('.scrap-input').value = Number(it.scrap) || '';
   });
-  wrap.appendChild(box);
+  calculateAllRows();
+  const btn = document.getElementById('btnCommit');
+  btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
+  switchTab('calc');
+}
+
+async function commitEdit() {
+  const items = [];
+  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+    const w = parseFloat(card.querySelector('.withdraw-input').value) || 0;
+    const r = parseFloat(card.querySelector('.return-input').value) || 0;
+    const s = parseFloat(card.querySelector('.scrap-input').value) || 0;
+    if (!w && !r && !s) return;
+    items.push({ code: METAL_CODE[card.dataset.metal], name: card.dataset.metal, bom: parseFloat(card.dataset.bom) || 0,
+      withdraw: w, ret: r, scrap: s });
+  });
+  if (!items.length) return uiAlert('ต้องมีเหล็กอย่างน้อย 1 รายการ');
+  const r = await uiConfirmTable(items, null);
+  if (r === null) return;
+  const who = r.name;
+  if (!who) return uiAlert('กรุณาใส่ชื่อผู้แก้ไข แล้วกดยืนยันใหม่');
   const keep = document.createElement('label');
   keep.className = 'flex items-center gap-2 text-xs font-bold text-slate-700';
   keep.innerHTML = '<input type="checkbox" id="editKeepDate" class="w-4 h-4"> ใช้วันที่ตัดเดิม (ถ้าไม่ติ๊ก จะใช้วันที่แก้ไข)';
-  wrap.appendChild(keep);
-  const nameIn = makeNameInput();
-  nameIn.placeholder = 'ชื่อผู้แก้ไข (จำเป็น)';
-  const pinIn = document.createElement('input');
-  pinIn.type = 'password'; pinIn.inputMode = 'numeric'; pinIn.autocomplete = 'off';
-  pinIn.placeholder = 'รหัสยืนยัน (จำเป็น)';
-  pinIn.className = 'w-full p-2 border-2 border-indigo-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
-  wrap.appendChild(nameIn); wrap.appendChild(pinIn);
-  if (!(await uiDialog('แก้ไขรายการนี้?\nระบบจะคืนสต็อกของรอบเดิมทั้งหมด แล้วตัดตามค่าใหม่ในครั้งเดียว\nประวัติเดิมยังอยู่ แสดงเป็น "ยกเลิกแล้ว"', true, wrap))) return;
-  if (pinIn.value.trim() !== CANCEL_PIN) return uiAlert('รหัสไม่ถูกต้อง ไม่สามารถแก้ไขรายการได้');
-  const who = nameIn.value.trim();
-  if (!who) return uiAlert('กรุณาใส่ชื่อผู้แก้ไข');
-  const items = rowsIn.map(({ it, row }) => {
-    const v = [...row.querySelectorAll('input')].map(i => parseFloat(i.value) || 0);
-    return { code: it.code, name: it.name, bom: Number(it.bom) || 0, withdraw: v[0], ret: v[1], scrap: v[2] };
-  }).filter(x => x.withdraw || x.ret || x.scrap);
-  if (!items.length) return uiAlert('ต้องมีเหล็กอย่างน้อย 1 รายการ');
-  saveName(who);
+  if (!(await uiDialog('ยืนยันการแก้ไขรายการ?\nระบบจะคืนสต็อกของรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว', true, keep))) return;
+  if (!(await askPin('ใส่รหัสยืนยันการแก้ไขรายการ'))) return;
+  const btn = document.getElementById('btnCommit');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังแก้ไขรายการและปรับสต็อก');
   try {
-    const j = await postApi({ action: 'edit', gids: card.gids || [card.id], items: items,
+    const j = await postApi({ action: 'edit', gids: editTarget.gids || [editTarget.id], items: items,
       keepDate: document.getElementById('editKeepDate').checked, user: who, by: who });
     hideBusy();
-    if (!j.ok) return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error));
+    if (!j.ok) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข'; return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error)); }
+    const newId = j.groupId;
+    clearJobPanel();
     await loadHistory(); loadStock(); loadSummary();
-    if (historyJobs.some(x => String(x.id) === String(j.groupId))) openHistoryJob(j.groupId); else showHistoryList();
+    switchTab('history');
+    if (historyJobs.some(x => String(x.id) === String(newId))) openHistoryJob(newId);
     await uiAlert('แก้ไขรายการและปรับสต็อกเรียบร้อย');
-  } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
+  } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')\nอย่าเพิ่งกดซ้ำ ให้ตรวจประวัติก่อน'); }
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
 }
 
 async function cancelJob(id) {
@@ -2280,6 +2297,8 @@ async function clearJob() {
 
 // ล้างหน้าคำนวณกลับเป็นยังไม่ได้เลือกงาน (ใช้ทั้งตอนกดลบงาน และหลังตัดสต็อกสำเร็จ)
 function clearJobPanel() {
+  editTarget = null;
+  document.getElementById('btnCommit').innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
   updateMergeInfo();
   setAdjustMode(false);
