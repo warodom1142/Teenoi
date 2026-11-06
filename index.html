@@ -1196,9 +1196,9 @@ function industryPayHtml() {
   const body = pay === null
     ? `<div class="text-xs font-bold text-slate-600">ยูนิต ${formatNum(units)} ยังไม่ถึง ${PAY_START} ยูนิต จึงยังไม่มีค่ายอด</div>`
     : `${outside ? `<div class="text-[11px] font-bold text-amber-700">ยูนิต ${formatNum(units)} อยู่นอกช่วงข้อมูลจริง (${PAY_RANGE[0]}–${PAY_RANGE[1]}) ค่าอาจคลาดเคลื่อน</div>` : ''}<div class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">ยูนิตอุตสาหกรรม</div><div class="text-base font-extrabold text-emerald-800">${formatNum(units)}</div></div>
-        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">เงินรวม (ประมาณ)</div><div class="text-base font-extrabold text-blue-900">${formatNum(Math.round(pay))}</div></div>
-        <div class="bg-emerald-100 border border-emerald-300 rounded-lg py-1.5"><div class="text-[10px] font-bold text-emerald-800">ต่อคน (${PAY_PEOPLE} คน)</div><div class="text-base font-extrabold text-emerald-900">${formatNum(Math.round(pay / PAY_PEOPLE))}</div></div>
+        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">ยูนิตอุตสาหกรรม</div><div class="text-base font-extrabold text-emerald-800"><span data-cnt="pay-units" data-to="${units}">${formatNum(units)}</span></div></div>
+        <div class="bg-white border border-slate-200 rounded-lg py-1.5"><div class="text-[10px] font-bold text-slate-500">เงินรวม (ประมาณ)</div><div class="text-base font-extrabold text-blue-900"><span data-cnt="pay-total" data-to="${Math.round(pay)}">${formatNum(Math.round(pay))}</span></div></div>
+        <div class="bg-emerald-100 border border-emerald-300 rounded-lg py-1.5"><div class="text-[10px] font-bold text-emerald-800">ต่อคน (${PAY_PEOPLE} คน)</div><div class="text-base font-extrabold text-emerald-900"><span data-cnt="pay-person" data-to="${Math.round(pay / PAY_PEOPLE)}">${formatNum(Math.round(pay / PAY_PEOPLE))}</span></div></div>
       </div>`;
   return `<div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
     <div class="text-xs font-extrabold text-emerald-900"><i class="fa-solid fa-sack-dollar"></i> ค่ายอด หมวดอุตสาหกรรม <span class="font-bold text-emerald-700">(ประเมินจากข้อมูลจริง)</span></div>
@@ -1230,7 +1230,7 @@ function renderPlan() {
   }
   const pgInline = pg ? `<span class="inline-flex flex-col items-center leading-tight align-middle ml-1.5 px-2.5 py-1 rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#2563eb,#db2777)"><b class="text-base font-black">${pg.pct}%</b><span class="text-[10px] font-bold opacity-95">เสร็จ ${pg.done}/${pg.cnt} งาน</span></span>` : '';
   document.getElementById('planStatus').innerHTML = !planLoaded ? 'กำลังโหลดแผน...'
-    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-blue-900">รวม ${formatNum(total)} ตัว</span> · <span class="text-base font-extrabold text-emerald-700">${formatNum(totalUnits)} ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
+    : `<span class="text-slate-500">${rows.length} งาน${planEditing ? ' · กำลังแก้ไข' : ''}</span> · <span class="text-base font-extrabold text-blue-900">รวม <span data-cnt="plan-total" data-to="${total}">${formatNum(total)}</span> ตัว</span> · <span class="text-base font-extrabold text-emerald-700"><span data-cnt="plan-units" data-to="${totalUnits}">${formatNum(totalUnits)}</span> ยูนิต</span>${noUnit ? `<div class="text-[11px] font-bold text-amber-700">ยังไม่มีข้อมูลยูนิตต่อเครื่อง ${noUnit} งาน (ยูนิตรวมยังไม่ครบ)</div>` : ''}`;
 
   document.getElementById('planBadge').innerHTML = pgInline;
   const sections = [];
@@ -1275,7 +1275,7 @@ function renderPlan() {
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
-    html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1">รวม ${formatNum(sum)} ตัว · <span class="text-emerald-700">${formatNum(sumU)} ยูนิต</span></div>`;
+    html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1">รวม <span data-cnt="sec-${esc(sec.name)}-sum" data-to="${sum}">${formatNum(sum)}</span> ตัว · <span class="text-emerald-700"><span data-cnt="sec-${esc(sec.name)}-units" data-to="${sumU}">${formatNum(sumU)}</span> ยูนิต</span></div>`;
     if (planEditing) html += `<button type="button" data-s="${esc(sec.name)}" onclick="addPlanRow(this.dataset.s)" class="mt-1 w-full py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i> เพิ่มงานในหมวดนี้</button>`;
     html += '</div>';
   });
@@ -1292,6 +1292,8 @@ function renderPlan() {
   if (!planEditing && planLoaded) html += industryPayHtml();
   if (!planEditing && planLoaded) html += '<button type="button" onclick="openPlanImport()" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-800 font-bold text-sm rounded-xl"><i class="fa-solid fa-camera"></i> เพิ่มงานจากรูปแผน / วางรายการ</button>';
   list.innerHTML = html;
+  animateCounts(document.getElementById('planStatus'));
+  animateCounts(list);
   if (!planEditing && planLoaded) {
     const k = 'bomcal_done_' + planMonth;
     let prev = null; try { prev = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
@@ -1830,7 +1832,7 @@ function renderSummary() {
       const r = agg[c];
       const oc = r.other > 0 ? 'text-emerald-700' : r.other < 0 ? 'text-rose-700' : 'text-slate-400';
       const ot = r.other ? (r.other > 0 ? '+' : '') + formatNum(r.other) : '-';
-      return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td class="text-purple-700 font-bold">${formatNum(r.wd - r.ret)}</td><td class="${oc} font-bold">${ot}</td><td class="font-extrabold">${formatNum(r.end)}</td></tr>`;
+      return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td data-cnt="sum-${esc(k)}-${c}-used" data-to="${r.wd - r.ret}" class="text-purple-700 font-bold">${formatNum(r.wd - r.ret)}</td><td class="${oc} font-bold">${ot}</td><td data-cnt="sum-${esc(k)}-${c}-end" data-to="${r.end}" class="font-extrabold">${formatNum(r.end)}</td></tr>`;
     }).join('');
     const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
@@ -1847,6 +1849,7 @@ function renderSummary() {
     ${timeline.map(e => e.type === 'adjust' ? summaryAdjBar(e) : summaryEventHtml(e)).join('')}
   </div>`;
   box.innerHTML = html + '<div class="text-[11px] font-semibold text-slate-500">หน่วย ซม. · จัดตามเดือนของแผนงาน · เฉพาะงานที่ตัดครบ 100% · ไม่รวมรายการที่ยกเลิก<br>ใช้จริง = เบิก − คืน · ปรับ = ปรับสต็อก + งานที่ยังไม่ครบในช่วงแผน</div>';
+  animateCounts(box);
 }
 
 // ===== ประวัติ =====
@@ -2501,6 +2504,14 @@ function countUpKey(el, key, to, fmt) {
   const t0 = performance.now(), D = 450;
   const step = t => { const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
+}
+// นับขึ้นทุก [data-cnt] ที่อยู่ในกล่องนี้ (ค่าเป้าหมายอยู่ใน data-to)
+function animateCounts(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-cnt]').forEach(el => {
+    const to = Number(el.dataset.to);
+    if (isFinite(to)) countUpKey(el, el.dataset.cnt, to, formatNum);
+  });
 }
 const TAB_ORDER = ['plan', 'calc', 'stock', 'history', 'cut'];
 const TAB_PAGE = { plan: 'pagePlan', calc: 'pageCalc', stock: 'pageStock', history: 'pageHistory', cut: 'pageCut' };
