@@ -439,7 +439,7 @@ function getMissingMetals(j) {
 // หมายเหตุของงานในแผน ที่ตรงกับรายการประวัตินี้ (รหัส + เดือน + จำนวน)
 function planNoteOf(j) {
   if (!j || j.jobCode === 'ADJUST') return '';
-  const r = planAll.find(p => String(p.code) === String(j.jobCode) && String(p.month) === String(j.month) && Number(p.qty) === Number(j.qty) && p.note);
+  const r = planAll.find(p => (p.id || '') === (j.planRowId || '') && String(p.code) === String(j.jobCode) && String(p.month) === String(j.month) && p.note);
   return r ? r.note : '';
 }
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1284,7 +1284,7 @@ function renderPlan() {
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty, r.id);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
-        if (pr && pr.pct >= 100) doneNow.push(r.code + '|' + r.qty);
+        if (pr && pr.pct >= 100) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
         const prCell = pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
         html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
@@ -1624,11 +1624,8 @@ function openPlanImport() {
       }
       else {
         rowsOut = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, note: r.note || '' }));
-        // รหัสซ้ำแต่จำนวนต่างกัน = เป็นอีกงานหนึ่ง เพิ่มเป็นแถวใหม่ (ข้ามเฉพาะแถวที่ซ้ำทั้งรหัส จำนวน และหมวด)
-        items.forEach(r => {
-          const same = rowsOut.some(x => x.code === r.code && Number(x.qty) === Number(r.qty) && (x.section || '') === (r.section || ''));
-          if (!same) rowsOut.push({ id: newPlanId(), section: r.section, code: r.code, qty: r.qty });
-        });
+        // ทุกรายการเป็นงานแยกกันเสมอ แม้รหัส จำนวน และหมวดจะเหมือนแถวเดิม จึงเพิ่มเป็นแถวใหม่ที่มีรหัสของตัวเองทุกครั้ง
+        items.forEach(r => rowsOut.push({ id: newPlanId(), section: r.section, code: r.code, qty: r.qty }));
       }
       if (await savePlanRows(planMonth, rowsOut)) { await saveUnits(items); close(); renderPlan(); }
     }
