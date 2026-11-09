@@ -1247,7 +1247,7 @@ function renderPlan() {
   if (!planEditing && bomLoaded && planLoaded) {
     let cut = 0, tot = 0, done = 0, cnt = 0;
     rows.forEach(r => {
-      if (!bomEntriesOf(r.code).length) return;
+      if (r.code === CUSTOM_CODE || !bomEntriesOf(r.code).length) return;
       const p = planProgress(r.code, planMonth, r.qty, r.id);
       if (!p) return;
       cnt++; cut += p.cut; tot += p.total; if (p.pct >= 100) done++;
@@ -1295,9 +1295,10 @@ function renderPlan() {
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty, r.id);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
-        if (pr && pr.pct >= 100) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
-        const prCell = pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
-        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
+        const isCustomRow = r.code === CUSTOM_CODE;
+        if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
+        const prCell = isCustomRow ? '<span class="inline-block text-[11px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-lg px-2 py-1">custom</span>' : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
+        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
