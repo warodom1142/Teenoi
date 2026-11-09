@@ -368,6 +368,8 @@ METAL_COLS.forEach(m => { METAL_CODE[m.name] = m.code; });
 
 let bomDatabase = [], currentActiveJob = null, isLoadingBom = false;
 let editTarget = null;   // การ์ดรายการที่กำลังแก้ไข (ไม่ใช่การตัดใหม่)
+let currentPlanRowId = '';   // แถวในแผนที่กำลังตัดอยู่ (ทำให้แต่ละแถวในแผนนับแยกกันอิสระ)
+function newPlanId() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()).toString(); }
 let stockMap = {}, stockLoadedAt = null, submitId = null, historyJobs = [];
 let cutData = [], cutGroups = {}, cutLoaded = false;
 
@@ -628,6 +630,7 @@ function previewMetalList() {
   const item = bomDatabase.find(x => x.code === code && x.name === name && x.pump === pp);
   if (!item) return;
   currentActiveJob = item;
+  currentPlanRowId = '';
   const keys = Object.keys(item.metals || {});
   document.getElementById('previewCount').textContent = `${keys.length} รายการ`;
   box.innerHTML = '';
@@ -668,6 +671,7 @@ async function applyJobToCalculator(planQty) {
   let metals = job.metals;
   if (job.code !== 'ADJUST') {
     const cands = historyJobs.filter(h => !h.cancelled && h.jobCode === job.code && h.pump === job.pump
+      && (h.planRowId || '') === (currentPlanRowId || '')
       && (!(Number(planQty) > 0) || Number(h.qty) === Number(planQty))
       && Object.keys(job.metals).some(m => !(h.items || []).some(it => it.name === m)));
     if (cands.length) {
@@ -1065,7 +1069,8 @@ async function commitStock() {
   try {
     const j = await postApi({ id: submitId, user: who, by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
       pump: isAdj ? (adjNote || '-') : currentActiveJob.pump, qty: isAdj ? 0 : qty, items: items,
-      month: sendMonth, groupId: groupId, merge: !!mergeJob, note: isAdj ? '' : jobNote });
+      month: sendMonth, groupId: groupId, merge: !!mergeJob, note: isAdj ? '' : jobNote,
+      planRowId: isAdj ? '' : (mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '')) });
     hideBusy();
     if (j.ok) {
       // ตัดเสร็จ -> ล้างงานออกจากหน้าคำนวณทันที (ไม่คาไว้)
@@ -1132,7 +1137,7 @@ function planRowsOf(m) { return planAll.filter(r => String(r.month) === String(m
 function bomEntriesOf(code) { return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST'); }
 
 // ความคืบหน้า = จำนวนประเภทเหล็กใน BOM ที่ตัดแล้ว (จากประวัติ ไม่นับที่ยกเลิก ตามเดือนของแผน) / ประเภทเหล็กทั้งหมดของ BOM
-function planProgress(code, month, qty) {
+function planProgress(code, month, qty, planId) {
   let best = null;
   bomEntriesOf(code).forEach(e => {
     const names = Object.keys(e.metals || {});
@@ -1140,6 +1145,8 @@ function planProgress(code, month, qty) {
     const cut = new Set();
     historyJobs.forEach(h => {
       if (h.cancelled || h.jobCode !== e.code || h.pump !== e.pump || String(h.month) !== String(month)) return;
+      // แถวในแผนที่มีรหัส นับเฉพาะการตัดที่มาจากแถวนั้น / แถวเก่าที่ไม่มีรหัส นับเฉพาะการตัดเก่าที่ไม่มีรหัส
+      if ((h.planRowId || '') !== (planId || '')) return;
       if (qty !== undefined && Number(h.qty) !== Number(qty)) return;   // รหัสเดียวกันแต่จำนวนต่างกัน = คนละงาน
       (h.items || []).forEach(it => cut.add(it.name));
     });
@@ -1230,7 +1237,7 @@ function renderPlan() {
     let cut = 0, tot = 0, done = 0, cnt = 0;
     rows.forEach(r => {
       if (!bomEntriesOf(r.code).length) return;
-      const p = planProgress(r.code, planMonth, r.qty);
+      const p = planProgress(r.code, planMonth, r.qty, r.id);
       if (!p) return;
       cnt++; cut += p.cut; tot += p.total; if (p.pct >= 100) done++;
     });
@@ -1275,7 +1282,7 @@ function renderPlan() {
           <td><input type="text" inputmode="decimal" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
           <td><div class="flex items-center justify-center gap-1"><div class="flex flex-col gap-0.5"><button type="button" onclick="movePlanRow(${i}, -1)" class="w-9 h-6 rounded bg-blue-600 text-white text-xs" aria-label="เลื่อนขึ้น"><i class="fa-solid fa-chevron-up"></i></button><button type="button" onclick="movePlanRow(${i}, 1)" class="w-9 h-6 rounded bg-blue-600 text-white text-xs" aria-label="เลื่อนลง"><i class="fa-solid fa-chevron-down"></i></button></div><button type="button" onclick="removePlanRow(${i})" class="w-8 h-8 rounded bg-rose-100 text-rose-600" aria-label="ลบ"><i class="fa-solid fa-trash-can"></i></button></div></td></tr>`;
       } else {
-        const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty);
+        const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty, r.id);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
         if (pr && pr.pct >= 100) doneNow.push(r.code + '|' + r.qty);
         const prCell = pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
@@ -1344,7 +1351,7 @@ async function askPin(msg) {
 
 async function startPlanEdit() {
   if (!(await askPin('ใส่รหัสเพื่อแก้ไขแผนงาน'))) return;
-  planDraft = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '' }));
+  planDraft = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '' }));
   planEditing = true; renderPlan();
 }
 function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
@@ -1382,7 +1389,7 @@ function movePlanRow(i, dir) {
 async function addPlanRow(section) {
   const code = await pickBomCode();
   if (!code) return;
-  planDraft.push({ section: section || '', code: code, qty: 1, units: unitMap[code] || 0 });
+  planDraft.push({ id: newPlanId(), section: section || '', code: code, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
 async function addPlanSection() {
@@ -1398,10 +1405,10 @@ async function addPlanSection() {
 async function savePlanRows(month, rows) {
   showBusy('กำลังบันทึกแผนงาน');
   try {
-    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })) });
+    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ id: String(r.id || ''), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })) });
     hideBusy();
     if (!j.ok) { await uiAlert('บันทึกแผนไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
-    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })));
+    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ id: String(r.id || ''), month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })));
     return true;
   } catch (e) {
     hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); return false;
@@ -1425,7 +1432,7 @@ function openPlanHistory(i) {
   const r = planRowsOf(planMonth)[i];
   if (!r) return;
   const pumps = new Set(bomEntriesOf(r.code).map(e => e.pump));
-  const job = historyJobs.find(h => !h.cancelled && h.jobCode === String(r.code) && pumps.has(h.pump) && String(h.month || '') === String(planMonth) && Number(h.qty) === Number(r.qty));
+  const job = historyJobs.find(h => !h.cancelled && h.jobCode === String(r.code) && pumps.has(h.pump) && String(h.month || '') === String(planMonth) && Number(h.qty) === Number(r.qty) && (h.planRowId || '') === (r.id || ''));
   if (!job) return uiAlert(`ไม่พบประวัติการตัดของ ${r.code}`);
   switchTab('history');
   openHistoryJob(job.id);
@@ -1447,6 +1454,7 @@ async function openPlanJob(i) {
   }
   currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
   document.getElementById('jobMonthSelect').value = currentJobMonth;
+  currentPlanRowId = r.id || '';
   currentActiveJob = entry;
   applyJobToCalculator(Number(r.qty));
 }
@@ -1606,13 +1614,20 @@ function openPlanImport() {
       if (missing.length && !(await uiConfirm('รหัสเหล่านี้ไม่พบใน BOM: ' + missing.join(', ') + '\nบันทึกต่อไหม?'))) return;
       if (!(await askPin('ใส่รหัสเพื่อบันทึกแผนงาน'))) return;
       let rowsOut;
-      if (q('[data-mode]').value === 'replace') rowsOut = items.map(r => ({ section: r.section, code: r.code, qty: r.qty }));
+      if (q('[data-mode]').value === 'replace') {
+        const old = planRowsOf(planMonth).slice();
+        rowsOut = items.map(r => {
+          const k = old.findIndex(x => x.code === r.code && Number(x.qty) === Number(r.qty) && (x.section || '') === (r.section || ''));
+          const prev = k >= 0 ? old.splice(k, 1)[0] : null;
+          return { id: prev ? (prev.id || '') : newPlanId(), section: r.section, code: r.code, qty: r.qty };
+        });
+      }
       else {
-        rowsOut = planRowsOf(planMonth).map(r => ({ section: r.section, code: r.code, qty: r.qty, note: r.note || '' }));
+        rowsOut = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, note: r.note || '' }));
         // รหัสซ้ำแต่จำนวนต่างกัน = เป็นอีกงานหนึ่ง เพิ่มเป็นแถวใหม่ (ข้ามเฉพาะแถวที่ซ้ำทั้งรหัส จำนวน และหมวด)
         items.forEach(r => {
           const same = rowsOut.some(x => x.code === r.code && Number(x.qty) === Number(r.qty) && (x.section || '') === (r.section || ''));
-          if (!same) rowsOut.push({ section: r.section, code: r.code, qty: r.qty });
+          if (!same) rowsOut.push({ id: newPlanId(), section: r.section, code: r.code, qty: r.qty });
         });
       }
       if (await savePlanRows(planMonth, rowsOut)) { await saveUnits(items); close(); renderPlan(); }
@@ -1888,7 +1903,7 @@ function consolidateHistory(jobs) {
   sorted.forEach(j => {
     const gid = String(j.id);
     if (j.jobCode === 'ADJUST' || j.cancelled) { out.push(Object.assign({}, j, { gids: [gid] })); return; }
-    const key = [j.jobCode, j.jobName, j.pump, j.qty, j.month].join('|');
+    const key = [j.jobCode, j.jobName, j.pump, j.qty, j.month, j.planRowId || ''].join('|');
     const names = new Set((j.items || []).map(it => it.name));
     let card = (open[key] || []).find(c => !c.items.some(it => names.has(it.name)));
     if (!card) {
@@ -2509,6 +2524,7 @@ function exitEditMode() {
 }
 function clearJobPanel() {
   exitEditMode();
+  currentPlanRowId = '';
   currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
   updateMergeInfo();
   setAdjustMode(false);
