@@ -1081,8 +1081,8 @@ async function commitStock() {
       clearJobPanel();
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
-      if (!isAdj) lineMsg = lineTextOf({ time: bkkTime(Date.now()), by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
-        pump: currentActiveJob.pump, qty, month: sendMonth, items });
+      if (!isAdj) lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
+        pump: currentActiveJob.pump, qty, month: sendMonth, items };
     } else await uiAlert('ไม่สำเร็จ:\n' + (j.message || j.error));
   } catch (e) {
     hideBusy();
@@ -1090,7 +1090,7 @@ async function commitStock() {
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   // ตัดเสร็จแล้ว ถามว่าจะส่งผลการตัดเข้าไลน์เลยไหม
-  if (lineMsg && await uiDialog('ส่งผลการตัดเข้าไลน์เลยไหม?', true)) shareLineText(lineMsg);
+  if (lineMsg && await uiDialog('ส่งรูปผลการตัดเข้าไลน์เลยไหม?', true)) shareLineCard(lineMsg).catch(e => uiAlert('สร้างรูปไม่สำเร็จ: ' + e.message));
 }
 
 // ===== แผนงาน =====
@@ -2120,7 +2120,7 @@ function openHistoryJob(id) {
     </div>`;
   }).join('');
 
-  const lineBtn = adj ? '' : `<button type="button" data-id="${esc(j.id)}" onclick="shareHistoryLine(this.dataset.id)" class="w-full py-2.5 mb-2 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm rounded-xl"><i class="fa-brands fa-line"></i> ส่งผลการตัดเข้าไลน์</button>`;
+  const lineBtn = adj ? '' : `<button type="button" data-id="${esc(j.id)}" onclick="shareHistoryLine(this.dataset.id)" class="w-full py-2.5 mb-2 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm rounded-xl"><i class="fa-brands fa-line"></i> ส่งรูปผลการตัดเข้าไลน์</button>`;
 
   box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + missingBanner + banner + lineBtn + cards;
   document.getElementById('historyListView').classList.add('hidden');
@@ -2128,35 +2128,82 @@ function openHistoryJob(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ===== ส่งผลการตัดเข้าไลน์ =====
-// ข้อความสรุปการตัด (ใช้ได้ทั้งหลังกดยืนยันตัด และจากหน้าประวัติ)
-function lineTextOf(o) {
+// ===== ส่งรูปผลการตัดเข้าไลน์ =====
+// วาดรูปสรุปผลการตัด (ใช้ได้ทั้งหลังกดยืนยันตัด และจากหน้าประวัติ)
+async function buildLineCardBlob(o) {
+  try { await document.fonts.ready; } catch (e) {}
+  const S = 2, W = 720, PAD = 24;
   const n = v => formatNum(Math.round(Number(v) || 0));
-  const rows = (o.items || []).filter(it => (Number(it.withdraw) || 0) || (Number(it.ret) || 0) || (Number(it.scrap) || 0))
-    .map(it => {
-      const used = it.used !== undefined ? Number(it.used) : (Number(it.withdraw) || 0) - (Number(it.ret) || 0);
-      return `• ${it.name}: เบิก ${n(it.withdraw)} · ใช้จริง ${n(used)} · คืน ${n(it.ret)} · เศษ ${n(it.scrap)}`;
-    });
-  const head = [
-    `📋 ผลการตัดสต็อก ${o.time || ''}`,
-    `โค้ด: ${o.jobCode || '-'} ${o.jobName || ''}`.trim(),
-    `ปั๊ม: ${o.pump || '-'}${o.qty ? ` · ผลิต ${n(o.qty)} ตัว` : ''}${o.month ? ` · เดือนงาน ${o.month}` : ''}`,
-    `ผู้ตัด: ${o.by || '-'}`
+  const items = (o.items || []).filter(it => (Number(it.withdraw) || 0) || (Number(it.ret) || 0) || (Number(it.scrap) || 0))
+    .map(it => ({ name: it.name, w: Number(it.withdraw) || 0,
+      used: it.used !== undefined ? Number(it.used) : (Number(it.withdraw) || 0) - (Number(it.ret) || 0),
+      ret: Number(it.ret) || 0, scrap: Number(it.scrap) || 0 }));
+  const info = [
+    `โค้ด ${o.jobCode || '-'} ${o.jobName || ''}`.trim(),
+    `ปั๊ม ${o.pump || '-'}${o.qty ? ` · ผลิต ${n(o.qty)} ตัว` : ''}${o.month ? ` · เดือนงาน ${o.month}` : ''}`,
+    `ผู้ตัด ${o.by || '-'} · ${o.time || ''}`
   ];
-  return [...head, '', ...rows].join('\n');
+  const HEAD_H = 56, INFO_H = info.length * 26 + 24, TH = 40, ROW = 44;
+  const H = HEAD_H + INFO_H + TH + items.length * ROW + PAD;
+  const c = document.createElement('canvas');
+  c.width = W * S; c.height = H * S;
+  const g = c.getContext('2d');
+  g.scale(S, S);
+  const FONT = 'Kanit, Prompt, sans-serif';
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#059669'; g.fillRect(0, 0, W, HEAD_H);
+  g.fillStyle = '#ffffff'; g.font = `700 22px ${FONT}`; g.textBaseline = 'middle';
+  g.fillText('ผลการตัดสต็อก', PAD, HEAD_H / 2);
+  g.fillStyle = '#0f172a'; g.font = `600 17px ${FONT}`;
+  info.forEach((t, i) => g.fillText(t, PAD, HEAD_H + 12 + 13 + i * 26));
+  let y = HEAD_H + INFO_H;
+  // หัวตาราง
+  const NUM_X = [390, 490, 590, 696];   // ตำแหน่งขวาของคอลัมน์ตัวเลข
+  const NUM_T = ['เบิก', 'ใช้จริง', 'คืน', 'เศษ'];
+  g.fillStyle = '#f1f5f9'; g.fillRect(0, y, W, TH);
+  g.fillStyle = '#475569'; g.font = `700 14px ${FONT}`; g.textBaseline = 'middle'; g.textAlign = 'left';
+  g.fillText('รายการเหล็ก', PAD, y + TH / 2);
+  g.textAlign = 'right';
+  NUM_T.forEach((t, i) => g.fillText(t, NUM_X[i], y + TH / 2));
+  y += TH;
+  // แถวเหล็ก
+  items.forEach(it => {
+    g.strokeStyle = '#e2e8f0'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, y + ROW); g.lineTo(W, y + ROW); g.stroke();
+    g.textAlign = 'left'; g.fillStyle = '#0f172a'; g.font = `600 16px ${FONT}`;
+    let name = it.name;
+    while (name.length > 1 && g.measureText(name).width > 250) name = name.slice(0, -1);
+    if (name !== it.name) name += '…';
+    g.fillText(name, PAD, y + ROW / 2);
+    g.textAlign = 'right'; g.font = `700 17px ${FONT}`;
+    g.fillStyle = '#1e3a8a'; g.fillText(n(it.w), NUM_X[0], y + ROW / 2);
+    g.fillStyle = '#047857'; g.fillText(n(it.used), NUM_X[1], y + ROW / 2);
+    g.fillStyle = '#b45309'; g.fillText(n(it.ret), NUM_X[2], y + ROW / 2);
+    g.fillStyle = '#334155'; g.fillText(n(it.scrap), NUM_X[3], y + ROW / 2);
+    y += ROW;
+  });
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('สร้างรูปไม่ได้')), 'image/png'));
 }
-// แชร์ข้อความเข้าไลน์ (ผ่านเมนูแชร์ของเครื่อง หรือเปิดไลน์โดยตรง)
-async function shareLineText(text) {
-  if (navigator.share) {
-    try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+// แชร์รูปผลการตัดเข้าไลน์ (เมนูแชร์ของเครื่อง ถ้าไม่รองรับจะบันทึกรูปแทน)
+async function shareLineCard(o) {
+  const blob = await buildLineCardBlob(o);
+  const name = `ผลตัด_${String(o.jobCode || 'งาน').replace(/[\\/:*?"<>|]/g, '')}.png`;
+  const file = new File([blob], name, { type: 'image/png' });
+  const text = [o.jobCode, o.jobName].filter(Boolean).join(' ');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
   }
-  window.open('https://line.me/R/msg/text/?' + encodeURIComponent(text), '_blank');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('บันทึกรูปแล้ว');
 }
 function shareHistoryLine(id) {
   const j = historyJobs.find(x => String(x.id) === String(id));
   if (!j) return;
-  shareLineText(lineTextOf({ time: j.time, by: j.by || j.user, jobCode: j.jobCode, jobName: j.jobName, pump: j.pump,
-    qty: j.qty, month: j.month, items: j.items }));
+  shareLineCard({ time: j.time, by: j.by || j.user, jobCode: j.jobCode, jobName: j.jobName, pump: j.pump,
+    qty: j.qty, month: j.month, items: j.items }).catch(e => uiAlert('สร้างรูปไม่สำเร็จ: ' + e.message));
 }
 
 // ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
