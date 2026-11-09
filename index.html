@@ -131,6 +131,49 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .sum-table th:first-child,.sum-table td.nm{text-align:left}
 .sum-table.sum-fit{min-width:0}
 .split-table th{font-size:13px}
+
+/* โหมดมืดตามการตั้งค่าของเครื่อง */
+@media (prefers-color-scheme: dark){
+:root{color-scheme:dark}
+body{background-color:#0b1120!important;color:#e2e8f0!important}
+.bg-white{background-color:#1e293b!important}
+.bg-slate-50{background-color:#172033!important}
+.bg-slate-100{background-color:#0f172a!important}
+.bg-slate-200{background-color:#1e293b!important}
+.bg-indigo-50,.bg-indigo-100{background-color:#1e1b4b!important}
+.bg-amber-50,.bg-amber-100{background-color:#3b2a0a!important}
+.bg-emerald-50{background-color:#052e26!important}
+.bg-rose-100{background-color:#4c0519!important}
+.bg-sky-50{background-color:#0c2a3f!important}
+.bg-lime-100\/70{background-color:#1a2e05!important}
+.text-slate-800,.text-slate-900,.text-slate-700{color:#e2e8f0!important}
+.text-slate-600{color:#cbd5e1!important}
+.text-slate-500{color:#94a3b8!important}
+.text-slate-400{color:#64748b!important}
+.text-indigo-950,.text-indigo-900{color:#c7d2fe!important}
+.text-indigo-800{color:#a5b4fc!important}
+.text-indigo-700,.text-indigo-600{color:#a5b4fc!important}
+.text-amber-700,.text-amber-800,.text-amber-900{color:#fcd34d!important}
+.text-emerald-700,.text-emerald-800,.text-emerald-900{color:#6ee7b7!important}
+.text-rose-600,.text-rose-700,.text-rose-800{color:#fda4af!important}
+.text-purple-700,.text-purple-900{color:#d8b4fe!important}
+.text-sky-900{color:#bae6fd!important}
+.text-lime-800,.text-lime-900{color:#bef264!important}
+.border-slate-200,.border-slate-300{border-color:#334155!important}
+.border-amber-300{border-color:#b45309!important}
+.border-emerald-200,.border-emerald-300{border-color:#047857!important}
+.border-indigo-200,.border-indigo-300{border-color:#4338ca!important}
+.border-rose-300{border-color:#be123c!important}
+.border-purple-300{border-color:#7e22ce!important}
+.border-sky-300{border-color:#0369a1!important}
+.border-lime-300{border-color:#4d7c0f!important}
+input:not([type=checkbox]):not([type=radio]),select,textarea{background-color:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
+input::placeholder{color:#64748b}
+.nav-btn{color:#94a3b8!important}
+.nav-btn.nav-active{background:#312e81!important;color:#c7d2fe!important}
+.hf-btn{color:#94a3b8!important}
+.hf-btn.hf-active{background:#1e293b!important;color:#a5b4fc!important;box-shadow:none!important}
+}
 </style>
 </head>
 <body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
@@ -1314,10 +1357,29 @@ function renderPlan() {
 }
 
 async function askPin(msg) {
+  const wrap = document.createElement('div');
+  wrap.className = 'space-y-2';
   const pin = document.createElement('input');
-  pin.type = 'password'; pin.inputMode = 'numeric'; pin.autocomplete = 'off'; pin.placeholder = 'รหัสยืนยัน';
-  pin.className = 'w-full p-2 border-2 border-rose-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
-  if (!(await uiDialog(msg, true, pin))) return false;
+  pin.type = 'password'; pin.readOnly = true; pin.inputMode = 'none'; pin.autocomplete = 'off'; pin.placeholder = 'กดตัวเลขด้านล่าง';
+  pin.className = 'w-full p-2 text-center tracking-[0.4em] border-2 border-rose-300 rounded-lg font-black text-xl focus:outline-none';
+  const pad = document.createElement('div');
+  pad.className = 'grid grid-cols-3 gap-2';
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(k => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    if (k === '') { b.className = 'invisible'; b.tabIndex = -1; }
+    else {
+      b.textContent = k === '⌫' ? '⌫' : k;
+      b.className = 'py-3 rounded-xl bg-slate-200 active:bg-slate-400 text-xl font-black text-slate-800';
+      b.onclick = () => {
+        if (k === '⌫') pin.value = pin.value.slice(0, -1);
+        else if (pin.value.length < 12) pin.value += k;
+      };
+    }
+    pad.appendChild(b);
+  });
+  wrap.appendChild(pin); wrap.appendChild(pad);
+  if (!(await uiDialog(msg, true, wrap))) return false;
   if (pin.value.trim() !== CANCEL_PIN) { await uiAlert('รหัสไม่ถูกต้อง'); return false; }
   return true;
 }
