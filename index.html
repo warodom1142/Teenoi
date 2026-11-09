@@ -1379,7 +1379,18 @@ async function pickPlanCode() {
   const inp = document.createElement('input');
   inp.type = 'text'; inp.placeholder = 'รหัสตามบิลลูกค้า เช่น 1307077-A';
   inp.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-  if (!(await uiDialog('รหัสงานลูกค้า (ตามบิล)', true, inp))) return null;
+  // กด Enter หรือหยุดพิมพ์ประมาณ 1.2 วินาที = กดตกลงให้อัตโนมัติ
+  let idleTimer = null;
+  const okBtn = () => { const ov = inp.closest('.fixed'); return ov ? ov.querySelector('[data-v="1"]') : null; };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(idleTimer); okBtn()?.click(); } });
+  inp.addEventListener('input', () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (inp.isConnected && inp.value.trim()) okBtn()?.click(); }, 1200);
+  });
+  const pending = uiDialog('รหัสงานลูกค้า (ตามบิล)', true, inp);
+  setTimeout(() => inp.focus(), 50);
+  if (!(await pending)) { clearTimeout(idleTimer); return null; }
+  clearTimeout(idleTimer);
   const bill = inp.value.trim().replace(/[:\s]+/g, '-');
   return bill ? CUSTOM_CODE + ':' + bill : CUSTOM_CODE;
 }
