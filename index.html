@@ -1355,6 +1355,8 @@ async function askPin(msg) {
       b.onclick = () => {
         if (k === '⌫') pin.value = pin.value.slice(0, -1);
         else if (pin.value.length < 12) pin.value += k;
+        // ใส่รหัสครบแล้ว กดตกลงให้อัตโนมัติ
+        if (pin.value.length === CANCEL_PIN.length) setTimeout(() => wrap.closest('.fixed')?.querySelector('[data-v="1"]')?.click(), 150);
       };
     }
     pad.appendChild(b);
@@ -2195,6 +2197,9 @@ async function cancelJob(id) {
   pinIn.type = 'password'; pinIn.inputMode = 'numeric'; pinIn.autocomplete = 'off';
   pinIn.placeholder = 'รหัสยืนยันการยกเลิก (จำเป็น)';
   pinIn.className = 'w-full p-2 border-2 border-rose-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-rose-500';
+  pinIn.addEventListener('input', () => {
+    if (pinIn.value.trim().length === CANCEL_PIN.length) setTimeout(() => wrap.closest('.fixed')?.querySelector('[data-v="1"]')?.click(), 150);
+  });
   wrap.appendChild(nameIn); wrap.appendChild(pinIn);
   if (!(await uiDialog('ยกเลิกรายการนี้?\nสต็อกจะถูกคืนอัตโนมัติ และทำย้อนกลับไม่ได้ (ประวัติยังอยู่ แสดงเป็น "ยกเลิกแล้ว")', true, wrap))) return;
   if (pinIn.value.trim() !== CANCEL_PIN) return uiAlert('รหัสไม่ถูกต้อง ไม่สามารถยกเลิกรายการได้');
