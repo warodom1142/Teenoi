@@ -1137,13 +1137,16 @@ async function importUnitSeed() {
 function planRowsOf(m) { return planAll.filter(r => String(r.month) === String(m)); }
 // งานลูกค้า: ไม่มีบอมตายตัว ใช้เหล็กทุกประเภท (ค่า BOM = 0 และไม่คำนวณเทียบบอม)
 const CUSTOM_CODE = 'CUSTOM';
-function customEntry() {
+// รหัสงานลูกค้าเก็บเป็น CUSTOM:<รหัสตามบิล> (ถ้าไม่ระบุ เก็บเป็น CUSTOM เฉย ๆ)
+const isCustomCode = c => String(c || '').split(':')[0] === CUSTOM_CODE;
+const customBillOf = c => { const t = String(c || ''); return t.includes(':') ? t.slice(t.indexOf(':') + 1) : ''; };
+function customEntry(code) {
   const metals = {};
   METAL_COLS.forEach(m => { metals[m.name] = 0; });
-  return { code: CUSTOM_CODE, name: 'งานลูกค้า', pump: '-', metals: metals, custom: true };
+  return { code: code || CUSTOM_CODE, name: 'งานลูกค้า', pump: '-', metals: metals, custom: true };
 }
 function bomEntriesOf(code) {
-  if (String(code) === CUSTOM_CODE) return [customEntry()];
+  if (isCustomCode(code)) return [customEntry(String(code))];
   return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST');
 }
 
@@ -1247,7 +1250,7 @@ function renderPlan() {
   if (!planEditing && bomLoaded && planLoaded) {
     let cut = 0, tot = 0, done = 0, cnt = 0;
     rows.forEach(r => {
-      if (r.code === CUSTOM_CODE || !bomEntriesOf(r.code).length) return;
+      if (isCustomCode(r.code) || !bomEntriesOf(r.code).length) return;
       const p = planProgress(r.code, planMonth, r.qty, r.id);
       if (!p) return;
       cnt++; cut += p.cut; tot += p.total; if (p.pct >= 100) done++;
@@ -1295,10 +1298,10 @@ function renderPlan() {
       } else {
         const pr = (!bomLoaded || missing) ? null : planProgress(r.code, planMonth, r.qty, r.id);
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
-        const isCustomRow = r.code === CUSTOM_CODE;
+        const isCustomRow = isCustomCode(r.code);
         if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
         const prCell = isCustomRow ? '<span class="inline-block text-[11px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-lg px-2 py-1">custom</span>' : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
-        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${esc(r.code)}</td>
+        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(r.code)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
@@ -1368,8 +1371,19 @@ async function startPlanEdit() {
 }
 function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
 
-async function changePlanCode(i) {
+// เลือกรหัสจาก BOM หรืองานลูกค้า (ถามรหัสตามบิลเพิ่ม)
+async function pickPlanCode() {
   const code = await pickBomCode();
+  if (code !== CUSTOM_CODE) return code;
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'รหัสตามบิลลูกค้า เช่น 1307077-A';
+  inp.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  if (!(await uiDialog('รหัสงานลูกค้า (ตามบิล)', true, inp))) return null;
+  const bill = inp.value.trim().replace(/[:\s]+/g, '-');
+  return bill ? CUSTOM_CODE + ':' + bill : CUSTOM_CODE;
+}
+async function changePlanCode(i) {
+  const code = await pickPlanCode();
   if (code && planDraft[i]) { planDraft[i].code = code; planDraft[i].units = unitMap[code] || 0; renderPlan(); }
 }
 function setPlanQty(i, v) {
@@ -1399,7 +1413,7 @@ function movePlanRow(i, dir) {
   renderPlan();
 }
 async function addPlanRow(section) {
-  const code = await pickBomCode();
+  const code = await pickPlanCode();
   if (!code) return;
   planDraft.push({ id: newPlanId(), section: section || '', code: code, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
