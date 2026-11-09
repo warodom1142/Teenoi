@@ -162,6 +162,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" onclick="openBomSheet()" class="py-3 text-sm font-extrabold bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700"><i class="fa-solid fa-arrows-rotate"></i> เปลี่ยนงาน</button>
       <button type="button" onclick="clearJob()" class="py-3 text-sm font-extrabold bg-rose-600 text-white rounded-xl shadow-sm hover:bg-rose-700"><i class="fa-solid fa-trash-can"></i> ลบงาน</button>
     </div>
+    <button type="button" onclick="openAdjustFromCalc()" class="w-full mb-2 py-2.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 rounded-xl text-sm font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก (ไม่ใช่งานผลิต)</button>
     <div id="editModeBanner" class="hidden mb-1.5 px-3 py-2 rounded-xl bg-amber-400 border-2 border-amber-600 text-amber-950 font-black text-center text-base shadow-md"><i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการเดิม</div>
     <div id="selectedJobTitle" class="text-sm font-extrabold text-blue-950 truncate">-- ยังไม่ได้เลือกงาน (กดปุ่ม เปลี่ยนงาน เพื่อเลือก) --</div>
     <div id="selectedJobPump" class="text-xs font-semibold text-blue-700">ปั๊ม: -</div>
@@ -232,7 +233,6 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <label class="block text-xs font-bold text-slate-700 mb-1">1. ค้นหารหัส / ชื่อสินค้า / ปั๊ม</label>
     <input type="text" id="searchCode" oninput="searchBom()" placeholder="เช่น 1310076 หรือ 0803116" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
   </div>
-  <button type="button" onclick="document.getElementById('searchCode').value='ADJUST';searchBom();" class="w-full py-1.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 rounded-lg text-xs font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก (ไม่ใช่งานผลิต)</button>
   <div>
     <label class="block text-xs font-bold text-slate-700 mb-1">2. เลือกรหัสงาน / ชื่อสินค้า</label>
     <select id="selectProduct" onchange="loadPumpOptions()" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-xs bg-slate-50"><option value="">-- พิมพ์ค้นหาด้านบนเพื่อเลือก --</option></select>
@@ -557,6 +557,7 @@ function parseCSV(text) {
 
 // ===== นำทาง / ค้นหา =====
 function openBomSheet() { loadHistory(); document.getElementById('pageBom').classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('pageBom').scrollTop = 0; }
+function openAdjustFromCalc() { openBomSheet(); document.getElementById('searchCode').value = 'ADJUST'; searchBom(); }
 function closeBomSheet() { document.getElementById('pageBom').classList.add('hidden'); document.body.style.overflow = ''; }
 
 function switchTab(tab) {
