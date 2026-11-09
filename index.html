@@ -810,6 +810,7 @@ function renderMetalCalcRows(metals) {
   const c = document.getElementById('metalCalcContainer');
   c.innerHTML = '';
   const keys = Object.keys(metals || {});
+  const isCustomJob = !!(currentActiveJob && currentActiveJob.custom);
   document.getElementById('metalCountBadge').textContent = `${keys.length} รายการ`;
   if (!keys.length) { c.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl">ไม่พบค่า BOM สเตนเลสในงานนี้</div>'; return; }
 
@@ -821,7 +822,7 @@ function renderMetalCalcRows(metals) {
     card.innerHTML = `
       <div class="flex justify-between items-center border-b border-slate-200 pb-2">
         <span class="font-extrabold text-lg text-blue-950">${metalIcon(metalName)} ${esc(metalName)}</span>
-        <span class="text-sm font-bold text-slate-500">BOM: <span class="text-blue-700 font-extrabold text-lg">${formatNum(bomVal)}</span> ซม.</span>
+        <span class="text-sm font-bold text-slate-500">BOM: <span class="text-blue-700 font-extrabold text-lg">${isCustomJob ? 'ไม่กำหนด' : formatNum(bomVal)}</span>${isCustomJob ? '' : ' ซม.'}</span>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="bg-blue-100/70 py-2 rounded-xl border border-blue-200 text-center"><div class="text-xs font-bold text-blue-800">Partlist (ซม.)</div><div class="partlist-val text-2xl font-extrabold text-blue-900 truncate px-1">0</div></div>
@@ -1134,7 +1135,17 @@ async function importUnitSeed() {
 }
 
 function planRowsOf(m) { return planAll.filter(r => String(r.month) === String(m)); }
-function bomEntriesOf(code) { return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST'); }
+// งานลูกค้า: ไม่มีบอมตายตัว ใช้เหล็กทุกประเภท (ค่า BOM = 0 และไม่คำนวณเทียบบอม)
+const CUSTOM_CODE = 'CUSTOM';
+function customEntry() {
+  const metals = {};
+  METAL_COLS.forEach(m => { metals[m.name] = 0; });
+  return { code: CUSTOM_CODE, name: 'งานลูกค้า', pump: '-', metals: metals, custom: true };
+}
+function bomEntriesOf(code) {
+  if (String(code) === CUSTOM_CODE) return [customEntry()];
+  return bomDatabase.filter(x => x.code === String(code) && x.code !== 'ADJUST');
+}
 
 // ความคืบหน้า = จำนวนประเภทเหล็กใน BOM ที่ตัดแล้ว (จากประวัติ ไม่นับที่ยกเลิก ตามเดือนของแผน) / ประเภทเหล็กทั้งหมดของ BOM
 function planProgress(code, month, qty, planId) {
@@ -1476,9 +1487,13 @@ function pickBomCode() {
         if (!seen.has(x.code)) seen.set(x.code, x);
       });
       const arr = [...seen.values()].slice(0, 40);
-      res.innerHTML = arr.length
+      const showCustom = !kw || 'งานลูกค้า'.includes(kw) || 'custom'.includes(kw);
+      const customBtn = showCustom
+        ? `<button type="button" data-code="${CUSTOM_CODE}" class="w-full text-left p-2 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 hover:bg-blue-100"><div class="font-extrabold text-xs text-blue-900">งานลูกค้า (ไม่มีบอมตายตัว)</div><div class="text-[11px] font-semibold text-slate-600">กรอกจำนวนเหล็กที่ตัดจริงเองทุกประเภท</div></button>`
+        : '';
+      res.innerHTML = customBtn + (arr.length
         ? arr.map(x => `<button type="button" data-code="${esc(x.code)}" class="w-full text-left p-2 border border-slate-200 rounded-lg hover:bg-blue-50"><div class="font-extrabold text-xs text-blue-900">${esc(x.code)}</div><div class="text-[11px] font-semibold text-slate-600">${esc(x.name)}</div></button>`).join('')
-        : '<div class="text-center text-xs text-slate-400 py-4">ไม่พบรหัสนี้ใน BOM</div>';
+        : (customBtn ? '' : '<div class="text-center text-xs text-slate-400 py-4">ไม่พบรหัสนี้ใน BOM</div>'));
     };
     inp.addEventListener('input', draw);
     ov.addEventListener('click', e => {
