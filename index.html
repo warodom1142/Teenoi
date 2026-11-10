@@ -1066,7 +1066,7 @@ async function commitStock() {
   const sendMonth = isAdj ? '' : (mergeJob && mergeJob.month ? String(mergeJob.month) : currentJobMonth);
 
   if (!submitId) submitId = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
-  let lineMsg = null;
+  let lineMsg = null, cutNotice = null;
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังบันทึกการตัดสต็อก');
@@ -1082,14 +1082,20 @@ async function commitStock() {
       clearJobPanel();
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
-      if (!isAdj) lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
-        pump: currentActiveJob.pump, qty, month: sendMonth, items };
+      if (!isAdj) {
+        lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
+          pump: currentActiveJob.pump, qty, month: sendMonth, items };
+        cutNotice = buildCutNotice({ jobCode: currentActiveJob.code, pump: currentActiveJob.pump, qty, month: sendMonth, items,
+          before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
+          planRowId: mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '') });
+      }
     } else await uiAlert('ไม่สำเร็จ:\n' + (j.message || j.error));
   } catch (e) {
     hideBusy();
     await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')\nลองกดยืนยันอีกครั้ง ระบบกันตัดซ้ำให้');
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
+  if (cutNotice) notifyLine(cutNotice);   // แจ้งเตือนไลน์อัตโนมัติ (ไม่รอ ไม่บล็อกการใช้งาน)
   // ตัดเสร็จแล้ว ถามว่าจะส่งผลการตัดเข้าไลน์เลยไหม
   if (lineMsg && await uiDialog('ส่งรูปผลการตัดเข้าไลน์เลยไหม?', true)) shareLineCard(lineMsg).catch(e => uiAlert('สร้างรูปไม่สำเร็จ: ' + e.message));
 }
@@ -2181,6 +2187,31 @@ function openHistoryJob(id) {
   document.getElementById('historyListView').classList.add('hidden');
   box.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== แจ้งเตือนไลน์เมื่อมีการตัดสต็อก =====
+// ตัดบางส่วน -> "งาน X จำนวน N ตัว มีการตัดสต็อก A กับ B คงเหลือ C"
+// ตัดครบทุกชนิด -> "งาน X จำนวน N ตัว จบงานเรียบร้อย"
+function buildCutNotice(o) {
+  if (isCustomCode(o.jobCode)) return null;   // งานลูกค้าไม่มี BOM ตายตัว ไม่รู้ว่าจบเมื่อไหร่
+  const full = bomDatabase.find(x => x.code === o.jobCode && x.pump === o.pump);
+  if (!full) return null;
+  const allMetals = Object.keys(full.metals || {});
+  const cutNow = (o.items || []).filter(it => (Number(it.withdraw) || 0) > 0).map(it => it.name);
+  if (!cutNow.length) return null;
+  const doneSet = new Set([...(o.before || []), ...cutNow]);
+  const remain = allMetals.filter(m => !doneSet.has(m));
+  const note = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
+  const head = `งาน ${o.jobCode} จำนวน ${formatNum(Number(o.qty) || 0)} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
+  return remain.length
+    ? `${head} มีการตัดสต็อก ${cutNow.join(' กับ ')} คงเหลือ ${remain.join(' กับ ')}`
+    : `${head} จบงานเรียบร้อย`;
+}
+async function notifyLine(text) {
+  try {
+    const j = await postApi({ action: 'notify', text });
+    if (!j.ok) throw new Error(j.message || j.error || 'ไม่สำเร็จ');
+  } catch (e) { toast('แจ้งเตือนไลน์ไม่สำเร็จ: ' + e.message); }
 }
 
 // ===== ส่งรูปผลการตัดเข้าไลน์ =====
