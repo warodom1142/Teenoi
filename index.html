@@ -2197,7 +2197,8 @@ function buildCutNotice(o) {
   if (!cutNow.length) return null;
   // งานลูกค้า (ไม่มี BOM ตายตัว) แจ้งทุกครั้งที่มีการตัด ไม่แจ้งว่าจบงาน
   if (isCustomCode(o.jobCode)) {
-    return `งานลูกค้า โค้ด ${customBillOf(o.jobCode)} จำนวน ${formatNum(Number(o.qty) || 0)} ตัว มีการตัด ${cutNow.join(' กับ ')}`;
+    const cNote = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
+    return `งานลูกค้า โค้ด ${customBillOf(o.jobCode)} จำนวน ${formatNum(Number(o.qty) || 0)} ตัว${cNote ? ` (โน้ต: ${cNote})` : ''} มีการตัด ${cutNow.join(' กับ ')}`;
   }
   const full = bomDatabase.find(x => x.code === o.jobCode && x.pump === o.pump);
   if (!full) return null;
