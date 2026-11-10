@@ -1061,6 +1061,7 @@ async function commitStock() {
   const who = r.name;
   if (!who) return uiAlert('กรุณาใส่ชื่อผู้ตัดสต็อก แล้วกดยืนยันใหม่');
   const mergeJob = isAdj ? null : mergeTarget;
+  const jobSnap = currentActiveJob, planSnap = currentPlanRowId;   // เก็บไว้ก่อนล้างหน้า (clearJobPanel จะเคลียร์ค่าเหล่านี้)
   const newId = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
   const groupId = mergeJob ? String(mergeJob.id) : newId();
   const sendMonth = isAdj ? '' : (mergeJob && mergeJob.month ? String(mergeJob.month) : currentJobMonth);
@@ -1083,11 +1084,11 @@ async function commitStock() {
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
       if (!isAdj) {
-        lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
-          pump: currentActiveJob.pump, qty, month: sendMonth, items };
-        cutNotice = buildCutNotice({ jobCode: currentActiveJob.code, pump: currentActiveJob.pump, qty, month: sendMonth, items,
+        lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: jobSnap.code, jobName: jobSnap.name,
+          pump: jobSnap.pump, qty, month: sendMonth, items };
+        cutNotice = buildCutNotice({ jobCode: jobSnap.code, pump: jobSnap.pump, qty, month: sendMonth, items,
           before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
-          planRowId: mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '') });
+          planRowId: mergeJob ? (mergeJob.planRowId || '') : (planSnap || '') });
       }
     } else await uiAlert('ไม่สำเร็จ:\n' + (j.message || j.error));
   } catch (e) {
