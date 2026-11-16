@@ -154,6 +154,10 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 <div id="pageCalc" class="page space-y-3">
   <div class="text-center py-0.5"><span class="inline-block border-2 border-red-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">คำนวณเหล็กตามงาน</span></div>
 
+  <div id="editModeBanner" class="hidden mb-2 p-3 rounded-2xl bg-amber-400 border-2 border-amber-600 ring-4 ring-amber-200 text-amber-950 shadow-lg text-center">
+    <div class="text-lg font-black"><i class="fa-solid fa-pen-to-square"></i> กำลังแก้ไขรายการเดิม</div>
+    <div class="text-[11px] font-bold mt-0.5">ยืนยันแล้วระบบจะคืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่</div>
+  </div>
   <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
     <div class="text-xs text-blue-800 font-bold">
       <span><i class="fa-solid fa-folder-open"></i> งานที่เลือก:</span>
@@ -162,8 +166,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
       <button type="button" onclick="openBomSheet()" class="py-3 text-sm font-extrabold bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700"><i class="fa-solid fa-arrows-rotate"></i> เปลี่ยนงาน</button>
       <button type="button" onclick="clearJob()" class="py-3 text-sm font-extrabold bg-rose-600 text-white rounded-xl shadow-sm hover:bg-rose-700"><i class="fa-solid fa-trash-can"></i> ลบงาน</button>
     </div>
-    <button type="button" onclick="openAdjustFromCalc()" class="w-full mb-2 py-2.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 rounded-xl text-sm font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก (ไม่ใช่งานผลิต)</button>
-    <div id="editModeBanner" class="hidden mb-1.5 px-3 py-2 rounded-xl bg-amber-400 border-2 border-amber-600 text-amber-950 font-black text-center text-base shadow-md"><i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการเดิม</div>
+    <button type="button" id="adjustFromCalcBtn" onclick="openAdjustFromCalc()" class="w-full mb-2 py-2.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 rounded-xl text-sm font-bold"><i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก (ไม่ใช่งานผลิต)</button>
     <div id="selectedJobTitle" class="text-sm font-extrabold text-blue-950 truncate">-- ยังไม่ได้เลือกงาน (กดปุ่ม เปลี่ยนงาน เพื่อเลือก) --</div>
     <div id="selectedJobPump" class="text-xs font-semibold text-blue-700">ปั๊ม: -</div>
     <div id="mergeInfo" class="hidden text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"></div>
@@ -2335,6 +2338,7 @@ async function editJob(id) {
   btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
   btn.classList.remove('bg-rose-600', 'hover:bg-rose-700'); btn.classList.add('bg-amber-500', 'hover:bg-amber-600', 'text-amber-950');
   document.getElementById('editModeBanner').classList.remove('hidden');
+  document.getElementById('adjustFromCalcBtn').classList.add('hidden');
   switchTab('calc');
 }
 
@@ -2775,6 +2779,7 @@ function exitEditMode() {
   cb.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   cb.classList.add('bg-rose-600', 'hover:bg-rose-700'); cb.classList.remove('bg-amber-500', 'hover:bg-amber-600', 'text-amber-950');
   document.getElementById('editModeBanner').classList.add('hidden');
+  document.getElementById('adjustFromCalcBtn').classList.remove('hidden');
 }
 function clearJobPanel() {
   exitEditMode();
