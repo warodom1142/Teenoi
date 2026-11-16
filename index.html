@@ -2419,6 +2419,22 @@ function cutTypeKind(type) {
   return 'other';
 }
 
+// วาดไอคอนกล่อง/ฉาก/วงกลม ลงบน canvas ให้เหมือนไอคอน SVG ในตาราง
+function drawCutIconCanvas(g, kind, x, y, size, c) {
+  g.save();
+  g.translate(x, y); g.scale(size / 24, size / 24);
+  g.strokeStyle = c; g.fillStyle = c;
+  if (kind === 'box') {
+    g.lineWidth = 2.6; g.strokeRect(3.5, 3.5, 17, 17);
+    g.globalAlpha = 0.25; g.fillRect(8, 8, 8, 8); g.globalAlpha = 1;
+  } else if (kind === 'angle') {
+    g.lineWidth = 3.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(5, 4); g.lineTo(5, 16); g.quadraticCurveTo(5, 19, 8, 19); g.lineTo(20, 19); g.stroke();
+  } else if (kind === 'other') {
+    g.lineWidth = 2.5; g.beginPath(); g.arc(12, 12, 6, 0, Math.PI * 2); g.stroke();
+  }
+  g.restore();
+}
 function cutTypeIcon(kind, c) {
   const icons = {
     box: `<rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="${c}" stroke-width="2.6"/><rect x="8" y="8" width="8" height="8" rx="1" fill="${c}" fill-opacity=".25"/>`,
@@ -2443,7 +2459,7 @@ function cutTypeBadge(type) {
   // สำหรับเหล็กรูปพรรณอื่นๆ (กล่อง, ฉาก) ให้แสดงไอคอนตามปกติ
   const m = raw.match(/[\d.\/]+(\s*[\*x]\s*[\d.\/]+)?\s*"?(\s*\(\d+\))?/i);
   const label = m ? m[0].trim() : raw.replace(/[^\w\s"().]/g, '').trim();
-  return `<span class="cut-badge" style="color:${s.color};background:${s.bg};border-color:${s.border}">${cutTypeIcon(kind, s.color)}<span>${esc(label)}</span></span>`;
+  return `<span class="cut-badge" data-kind="${kind}" style="color:${s.color};background:${s.bg};border-color:${s.border}">${cutTypeIcon(kind, s.color)}<span>${esc(label)}</span></span>`;
 }
 
 // ===== รายการตัดเหล็ก =====
@@ -2602,7 +2618,7 @@ function buildCutCanvas() {
     end: tr.classList.contains('group-end'),
     cells: [...tr.cells].map(td => {
       const b = td.querySelector('.cut-badge');
-      if (b) { const cs = getComputedStyle(b); return { text: b.textContent.trim(), badge: { color: cs.color, bg: cs.backgroundColor, border: cs.borderTopColor } }; }
+      if (b) { const cs = getComputedStyle(b); return { text: b.textContent.trim(), kind: b.dataset.kind || '', badge: { color: cs.color, bg: cs.backgroundColor, border: cs.borderTopColor } }; }
       return { text: td.textContent.trim(), bold: !!td.querySelector('strong') || td.classList.contains('font-bold') };
     })
   }));
@@ -2635,13 +2651,24 @@ function buildCutCanvas() {
     r.cells.forEach((cell, i) => {
       const cx = colX[i] + colW[i] / 2, cy = y + ROW_H / 2;
       if (cell.badge) {
-        cutFitFont(g, cell.text, colW[i] - 14, 13, 9, 600);
+        const hasIcon = ['box', 'angle', 'other'].includes(cell.kind);
+        const IC = 14, GAP = 4;   // ขนาดไอคอนและระยะห่างจากข้อความ
+        cutFitFont(g, cell.text, colW[i] - 14 - (hasIcon ? IC + GAP : 0), 13, 9, 600);
         const tw = g.measureText(cell.text).width;
-        const bw = Math.min(colW[i] - 8, tw + 16), bh = 24;
-        cutRoundRect(g, cx - bw / 2, cy - bh / 2, bw, bh, 8);
+        const contentW = tw + (hasIcon ? IC + GAP : 0);
+        const bw = Math.min(colW[i] - 8, contentW + 16), bh = 24;
+        const left = cx - bw / 2;
+        cutRoundRect(g, left, cy - bh / 2, bw, bh, 8);
         g.fillStyle = cell.badge.bg; g.fill();
         g.strokeStyle = cell.badge.border; g.lineWidth = 1; g.stroke();
-        g.fillStyle = cell.badge.color; g.fillText(cell.text, cx, cy);
+        if (hasIcon) {
+          drawCutIconCanvas(g, cell.kind, left + 8, cy - IC / 2, IC, cell.badge.color);
+          g.textAlign = 'left';
+          g.fillStyle = cell.badge.color; g.fillText(cell.text, left + 8 + IC + GAP, cy);
+          g.textAlign = 'center';
+        } else {
+          g.fillStyle = cell.badge.color; g.fillText(cell.text, cx, cy);
+        }
       } else {
         cutFitFont(g, cell.text, colW[i] - 8, cell.bold ? 15 : 14, 10, cell.bold ? 700 : 400);
         g.fillStyle = cell.bold ? '#0f172a' : '#334155';
