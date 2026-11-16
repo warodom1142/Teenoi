@@ -2196,10 +2196,12 @@ function openHistoryJob(id) {
 function buildCutNotice(o) {
   const cutNow = (o.items || []).filter(it => (Number(it.withdraw) || 0) > 0).map(it => it.name);
   if (!cutNow.length) return null;
+  const list = (title, arr) => `\n\n${title}\n` + arr.map(x => `• ${x}`).join('\n');
+  const qtyTxt = formatNum(Number(o.qty) || 0);
   // งานลูกค้า (ไม่มี BOM ตายตัว) แจ้งทุกครั้งที่มีการตัด ไม่แจ้งว่าจบงาน
   if (isCustomCode(o.jobCode)) {
     const cNote = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
-    return `งานลูกค้า โค้ด ${customBillOf(o.jobCode)} จำนวน ${formatNum(Number(o.qty) || 0)} ตัว${cNote ? ` (โน้ต: ${cNote})` : ''} มีการตัด ${cutNow.join(' กับ ')}`;
+    return `งานลูกค้า โค้ด ${customBillOf(o.jobCode)}\nจำนวน ${qtyTxt} ตัว${cNote ? ` (โน้ต: ${cNote})` : ''}` + list('✂️ ตัดแล้ว', cutNow);
   }
   const full = bomDatabase.find(x => x.code === o.jobCode && x.pump === o.pump);
   if (!full) return null;
@@ -2207,10 +2209,9 @@ function buildCutNotice(o) {
   const doneSet = new Set([...(o.before || []), ...cutNow]);
   const remain = allMetals.filter(m => !doneSet.has(m));
   const note = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
-  const head = `งาน ${o.jobCode} จำนวน ${formatNum(Number(o.qty) || 0)} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
-  return remain.length
-    ? `${head} มีการตัดสต็อก ${cutNow.join(' กับ ')} คงเหลือ ${remain.join(' กับ ')}`
-    : `${head} จบงานเรียบร้อย`;
+  const head = `งาน ${o.jobCode}\nจำนวน ${qtyTxt} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
+  if (!remain.length) return `${head}\n\n✅ จบงานเรียบร้อย` + list('✂️ ตัดแล้ว', cutNow);
+  return head + list('✂️ ตัดแล้ว', cutNow) + list('📦 คงเหลือ', remain);
 }
 async function notifyLine(text) {
   try {
