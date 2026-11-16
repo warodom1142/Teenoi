@@ -1711,7 +1711,7 @@ function openPlanImport() {
 }
 
 // ===== คำนวณแบ่งสัดส่วนหลายงาน (ตัดรวมทีเดียว) =====
-// สัดส่วนของแต่ละโค้ด = (BOM รวมต่อชิ้น × จำนวนชิ้น) ÷ ผลรวมทั้งหมด แล้วแบ่ง เบิก/คืน/ทิ้ง ตามสัดส่วนนั้น
+// สัดส่วนของแต่ละโค้ด = จำนวนชิ้นของโค้ดนั้น ÷ จำนวนชิ้นรวมทั้งหมด แล้วแบ่ง เบิก/คืน/ทิ้ง ตามสัดส่วนนั้น
 let splitRows = [{ code: '', pcs: '' }];
 function toggleSplit() {
   const box = document.getElementById('splitBox');
@@ -1772,7 +1772,7 @@ function splitCalc() {
     if (!pcs) { problems.push(`ใส่จำนวนตัวของ ${code}`); return; }
     const each = splitCmEach(e);
     if (!(each > 0)) { problems.push(`รหัส ${code} ไม่มีค่า BOM`); return; }
-    lines.push({ code, name: e.name, pcs, bom: each * pcs });
+    lines.push({ code, name: e.name, pcs });
   });
   if (problems.length) {
     out.innerHTML = `<div class="p-2 bg-rose-50 border border-rose-300 rounded-lg text-xs font-bold text-rose-800">${problems.map(esc).join('<br>')}</div>`;
@@ -1787,7 +1787,7 @@ function splitCalc() {
     r: Math.round(splitNum(document.getElementById('splitR').value)),
     s: Math.round(splitNum(document.getElementById('splitS').value))
   };
-  const weights = lines.map(l => l.bom);
+  const weights = lines.map(l => l.pcs);   // แบ่งตามจำนวนตัวอย่างเดียว ไม่ใช้ BOM
   const wd = splitAllocate(T.w, weights), rt = splitAllocate(T.r, weights), sc = splitAllocate(T.s, weights);
   const sum = a => a.reduce((x, y) => x + y, 0);
 
