@@ -662,7 +662,31 @@ function updateMergeInfo() {
   el.classList.remove('hidden');
 }
 
-async function applyJobToCalculator(planQty) {
+// งานเดิมที่ยังตัดไม่ครบ และตรงกับรหัส/ปั๊ม/แผนงาน/จำนวนที่เลือกได้
+function mergeCandsFor(job, planRowId, planQty) {
+  if (job.code === 'ADJUST') return [];
+  return historyJobs.filter(h => !h.cancelled && h.jobCode === job.code && h.pump === job.pump
+    && (h.planRowId || '') === (planRowId || '')
+    && (!(Number(planQty) > 0) || Number(h.qty) === Number(planQty))
+    && Object.keys(job.metals).some(m => !(h.items || []).some(it => it.name === m)));
+}
+// ถามว่าจะสร้างงานใหม่หรือเพิ่มเข้างานเดิม  (cancel = true ถ้ากดยกเลิก)
+async function askMergeTarget(cands) {
+  const node = document.createElement('select');
+  node.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'สร้างงานใหม่'; node.appendChild(o0);
+  cands.forEach(c => {
+    const o = document.createElement('option'); o.value = String(c.id);
+    o.textContent = `เพิ่มเข้างานเดิม ${c.time} · เดือน ${c.month || '-'} · ตัดแล้ว: ${(c.items || []).map(i => i.name).join(', ')}`;
+    node.appendChild(o);
+  });
+  const ok = await uiDialog('งานนี้เคยตัดสต็อกไปแล้ว\nจะสร้างงานใหม่ หรือเพิ่มเข้างานเดิม?', true, node);
+  if (!ok) return { cancel: true, target: null };
+  return { cancel: false, target: node.value ? (cands.find(c => String(c.id) === node.value) || null) : null };
+}
+
+// pre = { target } เมื่อเลือกในหน้าแผนงานแล้ว (ไม่ถามซ้ำ) ถ้าไม่ส่งมา จะถามในหน้าคำนวณเหมือนเดิม
+async function applyJobToCalculator(planQty, pre) {
   if (!currentActiveJob) return;
   if (editTarget) exitEditMode();
   const job = currentActiveJob;
@@ -673,32 +697,20 @@ async function applyJobToCalculator(planQty) {
   document.getElementById('jobNoteInput').value = '';
   setAdjustMode(job.code === 'ADJUST');
   switchTab('calc');
+  let target = null;
+  if (pre) {
+    target = pre.target || null;
+  } else {
+    const cands = mergeCandsFor(job, currentPlanRowId, planQty);
+    if (cands.length) target = (await askMergeTarget(cands)).target;
+  }
   let metals = job.metals;
-  if (job.code !== 'ADJUST') {
-    const cands = historyJobs.filter(h => !h.cancelled && h.jobCode === job.code && h.pump === job.pump
-      && (h.planRowId || '') === (currentPlanRowId || '')
-      && (!(Number(planQty) > 0) || Number(h.qty) === Number(planQty))
-      && Object.keys(job.metals).some(m => !(h.items || []).some(it => it.name === m)));
-    if (cands.length) {
-      const node = document.createElement('select');
-      node.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
-      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'สร้างงานใหม่'; node.appendChild(o0);
-      cands.forEach(c => {
-        const o = document.createElement('option'); o.value = String(c.id);
-        o.textContent = `เพิ่มเข้างานเดิม ${c.time} · เดือน ${c.month || '-'} · ตัดแล้ว: ${(c.items || []).map(i => i.name).join(', ')}`;
-        node.appendChild(o);
-      });
-      const ok = await uiDialog('งานนี้เคยตัดสต็อกไปแล้ว\nจะสร้างงานใหม่ หรือเพิ่มเข้างานเดิม?', true, node);
-      if (ok && node.value) {
-        mergeTarget = cands.find(c => String(c.id) === node.value) || null;
-        if (mergeTarget) {
-          if (Number(mergeTarget.qty) > 0) document.getElementById('globalQty').value = Number(mergeTarget.qty);
-          const done = new Set((mergeTarget.items || []).map(i => i.name));
-          metals = {};
-          Object.keys(job.metals).forEach(m => { if (!done.has(m)) metals[m] = job.metals[m]; });
-        }
-      }
-    }
+  if (target) {
+    mergeTarget = target;
+    if (Number(target.qty) > 0) document.getElementById('globalQty').value = Number(target.qty);
+    const done = new Set((target.items || []).map(i => i.name));
+    metals = {};
+    Object.keys(job.metals).forEach(m => { if (!done.has(m)) metals[m] = job.metals[m]; });
   }
   if (!mergeTarget && Number(planQty) > 0) document.getElementById('globalQty').value = Number(planQty);
   updateMergeInfo();
@@ -1519,11 +1531,19 @@ async function openPlanJob(i) {
     if (!(await uiDialog(`งาน ${r.code} มีหลายปั๊ม เลือกปั๊ม`, true, sel))) return;
     entry = entries[sel.selectedIndex];
   }
+  // เลือกก่อนว่าจะสร้างงานใหม่หรือเพิ่มเข้างานเดิม (ยังไม่เปิดหน้าคำนวณ) ถ้ากดยกเลิกจะอยู่หน้าแผนงานต่อ
+  const cands = mergeCandsFor(entry, r.id || '', r.qty);
+  let target = null;
+  if (cands.length) {
+    const pick = await askMergeTarget(cands);
+    if (pick.cancel) return;
+    target = pick.target;
+  }
   currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
   document.getElementById('jobMonthSelect').value = currentJobMonth;
   currentPlanRowId = r.id || '';
   currentActiveJob = entry;
-  applyJobToCalculator(Number(r.qty));
+  applyJobToCalculator(Number(r.qty), { target });
 }
 
 // ค้นหา/เลือกรหัสงานจาก BOM
