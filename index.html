@@ -1315,7 +1315,7 @@ function renderPlan() {
       const missing = bomLoaded && !entries.length;
       const nameCell = !bomLoaded ? '<span class="text-slate-400">กำลังโหลด BOM...</span>'
         : missing ? '<span class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบรหัสนี้ใน BOM</span>'
-        : esc(entries[0].name);
+        : `${esc((entries.find(e => e.pump === r.pump) || entries[0]).name)}${r.pump ? `<div class="text-[10px] font-semibold text-slate-500">ปั๊ม: ${esc(r.pump)}</div>` : ''}`;
       if (planEditing) {
         html += `<tr class="${missing ? 'bg-rose-50' : (planMovedRef === r ? 'bg-amber-200' : '')}"><td class="font-extrabold">${n + 1}</td>
           <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-blue-100 text-blue-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button></td>
@@ -1431,9 +1431,23 @@ async function pickPlanCode() {
   const bill = inp.value.trim().replace(/[:\s]+/g, '-');
   return bill ? CUSTOM_CODE + ':' + bill : CUSTOM_CODE;
 }
+// เลือกปั๊มของรหัสที่มีหลายปั๊ม แล้วจำไว้กับแถวแผน (คืน null ถ้ากดยกเลิก)
+async function pickPumpFor(code, current) {
+  const entries = bomEntriesOf(code);
+  if (!entries.length) return '';
+  if (entries.length === 1) return entries[0].pump;
+  const sel = document.createElement('select');
+  sel.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
+  entries.forEach(e => { const o = document.createElement('option'); o.value = e.pump; o.textContent = `ปั๊ม: ${e.pump}`; if (e.pump === current) o.selected = true; sel.appendChild(o); });
+  if (!(await uiDialog(`รหัส ${code} มีหลายปั๊ม เลือกปั๊มของงานนี้ (จะจำไว้กับแผน)`, true, sel))) return null;
+  return sel.value;
+}
 async function changePlanCode(i) {
   const code = await pickPlanCode();
-  if (code && planDraft[i]) { planDraft[i].code = code; planDraft[i].units = unitMap[code] || 0; renderPlan(); }
+  if (!code || !planDraft[i]) return;
+  let pump = '';
+  if (!isCustomCode(code)) { pump = await pickPumpFor(code, ''); if (pump === null) return; }
+  planDraft[i].code = code; planDraft[i].pump = pump; planDraft[i].units = unitMap[code] || 0; renderPlan();
 }
 function setPlanQty(i, v) {
   if (!planDraft[i]) return;
@@ -1464,7 +1478,9 @@ function movePlanRow(i, dir) {
 async function addPlanRow(section) {
   const code = await pickPlanCode();
   if (!code) return;
-  planDraft.push({ id: newPlanId(), section: section || '', code: code, qty: 1, units: unitMap[code] || 0 });
+  let pump = '';
+  if (!isCustomCode(code)) { pump = await pickPumpFor(code, ''); if (pump === null) return; }
+  planDraft.push({ id: newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
 async function addPlanSection() {
@@ -1480,10 +1496,10 @@ async function addPlanSection() {
 async function savePlanRows(month, rows) {
   showBusy('กำลังบันทึกแผนงาน');
   try {
-    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ id: String(r.id || ''), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })) });
+    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ id: String(r.id || ''), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || '') })) });
     hideBusy();
     if (!j.ok) { await uiAlert('บันทึกแผนไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
-    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ id: String(r.id || ''), month: String(month), section: r.section || '', code: String(r.code), qty: Number(r.qty), note: String(r.note || '') })));
+    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ id: String(r.id || ''), month: String(month), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || '') })));
     return true;
   } catch (e) {
     hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); return false;
@@ -1519,8 +1535,9 @@ async function openPlanJob(i) {
   if (!bomDatabase.length) return uiAlert('ยังโหลดข้อมูล BOM ไม่เสร็จ รอสักครู่แล้วลองใหม่');
   const entries = bomEntriesOf(r.code);
   if (!entries.length) return uiAlert(`ไม่พบรหัส ${r.code} ใน BOM\nกด "แก้ไข" เพื่อเปลี่ยนรหัสในแผน`);
-  let entry = entries[0];
-  if (entries.length > 1) {
+  let entry = r.pump ? entries.find(e => e.pump === r.pump) : null;   // มีปั๊มที่จำไว้แล้ว ไม่ต้องถามซ้ำ
+  if (!entry) entry = entries[0];
+  if (!entry || (!r.pump && entries.length > 1)) {
     const sel = document.createElement('select');
     sel.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
     entries.forEach(e => { const o = document.createElement('option'); o.textContent = `ปั๊ม: ${e.pump}`; sel.appendChild(o); });
