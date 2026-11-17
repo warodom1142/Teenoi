@@ -1082,7 +1082,7 @@ async function commitStock() {
   const sendMonth = isAdj ? '' : (mergeJob && mergeJob.month ? String(mergeJob.month) : currentJobMonth);
 
   if (!submitId) submitId = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
-  let lineMsg = null, cutNotice = null;
+  let cutNotice = null;
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังบันทึกการตัดสต็อก');
@@ -1099,8 +1099,6 @@ async function commitStock() {
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
       if (!isAdj) {
-        lineMsg = { time: bkkTime(Date.now()), by: who, jobCode: jobSnap.code, jobName: jobSnap.name,
-          pump: jobSnap.pump, qty, month: sendMonth, items };
         cutNotice = buildCutNotice({ jobCode: jobSnap.code, pump: jobSnap.pump, qty, month: sendMonth, items,
           before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
           planRowId: mergeJob ? (mergeJob.planRowId || '') : (planSnap || '') });
@@ -1112,8 +1110,6 @@ async function commitStock() {
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   if (cutNotice) notifyLine(cutNotice);   // แจ้งเตือนไลน์อัตโนมัติ (ไม่รอ ไม่บล็อกการใช้งาน)
-  // ตัดเสร็จแล้ว ถามว่าจะส่งผลการตัดเข้าไลน์เลยไหม
-  if (lineMsg && await uiDialog('ส่งรูปผลการตัดเข้าไลน์เลยไหม?', true)) shareLineCard(lineMsg).catch(e => uiAlert('สร้างรูปไม่สำเร็จ: ' + e.message));
 }
 
 // ===== แผนงาน =====
