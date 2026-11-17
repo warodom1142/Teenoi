@@ -1527,14 +1527,9 @@ async function openPlanJob(i) {
     if (!(await uiDialog(`งาน ${r.code} มีหลายปั๊ม เลือกปั๊ม`, true, sel))) return;
     entry = entries[sel.selectedIndex];
   }
-  // เลือกก่อนว่าจะสร้างงานใหม่หรือเพิ่มเข้างานเดิม (ยังไม่เปิดหน้าคำนวณ) ถ้ากดยกเลิกจะอยู่หน้าแผนงานต่อ
+  // มีงานเดิมของแผนนี้ที่ยังตัดไม่ครบ -> เข้างานเดิม (รอบล่าสุด) เลย ไม่ถามซ้ำ
   const cands = mergeCandsFor(entry, r.id || '', r.qty);
-  let target = null;
-  if (cands.length) {
-    const pick = await askMergeTarget(cands);
-    if (pick.cancel) return;
-    target = pick.target;
-  }
+  const target = cands.length ? cands.slice().sort((a, b) => (b._ts || 0) - (a._ts || 0))[0] : null;
   currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
   document.getElementById('jobMonthSelect').value = currentJobMonth;
   currentPlanRowId = r.id || '';
