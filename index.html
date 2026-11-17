@@ -1356,7 +1356,6 @@ function renderPlan() {
     const k = 'bomcal_done_' + planMonth;
     let prev = null; try { prev = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
     try { localStorage.setItem(k, JSON.stringify(doneNow)); } catch (e) {}
-    if (prev && doneNow.some(x => !prev.includes(x))) { confetti(); toast('🎉 มีงานเสร็จ 100% แล้ว'); }
   }
 
   foot.innerHTML = planEditing
