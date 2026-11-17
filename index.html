@@ -2372,6 +2372,8 @@ async function commitEdit() {
   const keep = document.createElement('label');
   keep.className = 'flex items-center gap-2 text-xs font-bold text-slate-700';
   keep.innerHTML = '<input type="checkbox" id="editKeepDate" class="w-4 h-4"> ใช้วันที่แก้ไข (ถ้าไม่ติ๊ก จะใช้วันที่ตัดเดิม)';   // ค่าเริ่มต้น = วันที่ตัดเดิม
+  // เก็บ reference ไว้ก่อน เพราะ dialog จะถูกลบออกจากหน้าเมื่อปิด (getElementById จะคืน null)
+  const keepChk = keep.querySelector('#editKeepDate');
   if (!(await uiDialog('ยืนยันการแก้ไขรายการ?\nระบบจะคืนสต็อกของรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว', true, keep))) return;
   if (!(await askPin('ใส่รหัสยืนยันการแก้ไขรายการ'))) return;
   const btn = document.getElementById('btnCommit');
@@ -2379,7 +2381,7 @@ async function commitEdit() {
   showBusy('กำลังแก้ไขรายการและปรับสต็อก');
   try {
     const j = await postApi({ action: 'edit', gids: editTarget.gids || [editTarget.id], items: items,
-      keepDate: !document.getElementById('editKeepDate').checked, user: who, by: who });   // ติ๊ก = ใช้วันที่แก้ไข
+      keepDate: !keepChk.checked, user: who, by: who });   // ติ๊ก = ใช้วันที่แก้ไข
     hideBusy();
     if (!j.ok) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข'; return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error)); }
     const newId = j.groupId;
