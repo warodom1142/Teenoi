@@ -3,7 +3,7 @@ const TOKEN = 'bomcal';           // ต้องตรงกับ STOCK_TOKEN 
 const STOCK_SHEET = 'Stock';      // คอลัมน์ A=รหัส, B=ชื่อ, C=คงเหลือ
 const LOG_SHEET = 'Log';
 const PLAN_SHEET = 'Plan';        // แผนงานรายเดือน: A=เดือน, B=หมวด, C=รหัสงาน, D=จำนวน
-const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว'];
+const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว', 'ปั๊ม'];
 const UNIT_SHEET = 'Units';       // ยูนิตต่อ 1 เครื่อง ของแต่ละรหัสงาน: A=รหัสงาน, B=ยูนิตต่อเครื่อง
 const UNIT_HEADERS = ['รหัสงาน', 'ยูนิตต่อเครื่อง'];
 
@@ -417,6 +417,7 @@ function ensurePlan_(ss) {
   if (sh.getLastRow() === 0) sh.appendRow(PLAN_HEADERS);
   else if (!sh.getRange(1, 5).getValue()) sh.getRange(1, 5).setValue('หมายเหตุ');
   if (!sh.getRange(1, 6).getValue()) sh.getRange(1, 6).setValue('รหัสแถว');
+  if (!sh.getRange(1, 7).getValue()) sh.getRange(1, 7).setValue('ปั๊ม');
   return sh;
 }
 
@@ -424,11 +425,11 @@ function getPlan_(ss) {
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
   if (last < 2) return { ok: true, plan: [] };
-  const v = sh.getRange(2, 1, last - 1, 6).getValues();
+  const v = sh.getRange(2, 1, last - 1, 7).getValues();
   return {
     ok: true,
     plan: v.filter(r => String(r[2]).trim() !== '').map(r => ({
-      id: String(r[5] || ''), month: String(r[0]), section: String(r[1] || ''), code: String(r[2]).trim(), qty: Number(r[3]) || 0, note: String(r[4] || '')
+      id: String(r[5] || ''), month: String(r[0]), section: String(r[1] || ''), code: String(r[2]).trim(), qty: Number(r[3]) || 0, note: String(r[4] || ''), pump: String(r[6] || '')
     }))
   };
 }
@@ -443,18 +444,19 @@ function planSave_(ss, d) {
     code: String(r.code || '').trim(),
     qty: num_(r.qty, 'จำนวน'),
     note: String(r.note || '').trim().slice(0, 200),
-    id: String(r.id || '').trim().slice(0, 60)
+    id: String(r.id || '').trim().slice(0, 60),
+    pump: String(r.pump || '').trim().slice(0, 60)
   }));
   if (rows.some(r => !r.code || r.code.length > 20)) return fail_('validation', 'มีบรรทัดที่ไม่มีรหัสงาน');
 
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
-  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 6).getValues().filter(r => String(r[0]) !== month);
-  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id]));
-  if (last >= 2) sh.getRange(2, 1, last - 1, 6).clearContent();
+  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 7).getValues().filter(r => String(r[0]) !== month);
+  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump]));
+  if (last >= 2) sh.getRange(2, 1, last - 1, 7).clearContent();
   if (all.length) {
     sh.getRange(2, 3, all.length, 1).setNumberFormat('@');   // เก็บรหัสเป็นข้อความ ไม่ให้เลขศูนย์นำหน้าหาย
-    sh.getRange(2, 1, all.length, 6).setValues(all);
+    sh.getRange(2, 1, all.length, 7).setValues(all);
   }
   SpreadsheetApp.flush();
   return out_({ ok: true, count: rows.length });
