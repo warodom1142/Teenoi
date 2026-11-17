@@ -172,7 +172,7 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
     <div id="mergeInfo" class="hidden text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"></div>
     <div class="flex items-center justify-between gap-2 pt-1.5 mt-1 border-t border-blue-200">
       <label for="jobMonthSelect" class="text-xs font-bold text-blue-800 whitespace-nowrap"><i class="fa-solid fa-calendar-days"></i> เดือนงาน:</label>
-      <select id="jobMonthSelect" onchange="onJobMonthChange(this)" class="flex-1 p-1.5 border border-blue-300 rounded-lg font-bold text-xs bg-white text-blue-900"></select>
+      <select id="jobMonthSelect" onchange="onJobMonthChange()" class="flex-1 p-1.5 border border-blue-300 rounded-lg font-bold text-xs bg-white text-blue-900"></select>
     </div>
     <div id="jobNoteBox">
       <label for="jobNoteInput" class="block text-[11px] font-bold text-blue-700 mb-0.5 mt-0.5">โน้ต (ถ้ามี)</label>
@@ -390,11 +390,36 @@ function parseMonthKey(v) {
 }
 function monthKeyNum(v) { const p = parseMonthKey(v); return p ? p.y * 12 + p.m : 0; }
 function monthLabel(v) { const p = parseMonthKey(v); return p ? `${TH_MONTHS[p.m]} ${p.y + 543}` : ''; }
-function monthOptionList() {
-  const out = [];
-  for (let m = 1; m <= 12; m++) out.push({ v: String(m), t: `${TH_MONTHS[m]} ${LEGACY_YEAR + 543}` });
-  for (let m = 1; m <= 12; m++) out.push({ v: `${LEGACY_YEAR + 1}-${String(m).padStart(2, '0')}`, t: `${TH_MONTHS[m]} ${LEGACY_YEAR + 1 + 543}` });
-  return out;
+// ตัวเลือกเดือนแบบ 2 ดรอปดาว (เดือน + ปี) ค่าที่ใช้จริงคือคีย์เดือน เช่น "11" หรือ "2027-01"
+function monthPickerInit(id, allLabel) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  let yr = document.getElementById(id + 'Year');
+  if (!yr) {
+    yr = document.createElement('select');
+    yr.id = id + 'Year';
+    yr.className = sel.className;
+    yr.setAttribute('onchange', sel.getAttribute('onchange') || '');
+    sel.after(yr);
+  }
+  const add = (el, v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); };
+  sel.innerHTML = ''; yr.innerHTML = '';
+  if (allLabel) add(sel, '', allLabel);
+  for (let m = 1; m <= 12; m++) add(sel, String(m), `${m}. ${TH_MONTHS[m]}`);
+  [LEGACY_YEAR, LEGACY_YEAR + 1].forEach(y => add(yr, String(y), String(y + 543)));
+}
+function monthPickerValue(id) {
+  const m = document.getElementById(id).value;
+  const y = document.getElementById(id + 'Year').value || String(LEGACY_YEAR);
+  if (!m) return '';   // ไม่เลือกเดือน = ทั้งหมด
+  return +y === LEGACY_YEAR ? m : `${y}-${String(m).padStart(2, '0')}`;
+}
+function monthPickerSet(id, key) {
+  const p = parseMonthKey(key);
+  const sel = document.getElementById(id), yr = document.getElementById(id + 'Year');
+  if (!p) { if (sel && sel.querySelector('option[value=""]')) sel.value = ''; return; }
+  sel.value = String(p.m);
+  yr.value = String(p.y);
 }
 function todayStr() { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
 function getCurrentJobMonth() {
@@ -415,29 +440,26 @@ function getOrCreateGroupId(key) {
 }
 
 function initJobMonthSelect() {
-  const sel = document.getElementById('jobMonthSelect');
-  if (!sel) return;
-  sel.innerHTML = '';
-  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `เดือน ${x.t}`; sel.appendChild(o); });
-  sel.value = currentJobMonth;
+  monthPickerInit('jobMonthSelect');
+  monthPickerSet('jobMonthSelect', currentJobMonth);
 }
 
-async function onJobMonthChange(sel) {
-  const newVal = sel.value, oldVal = currentJobMonth;
+async function onJobMonthChange() {
+  const newVal = monthPickerValue('jobMonthSelect'), oldVal = currentJobMonth;
   if (monthKeyNum(newVal) === monthKeyNum(oldVal)) return;
   const msg = monthKeyNum(newVal) < monthKeyNum(oldVal)
     ? `กำลังย้อนกลับไปเดือนก่อนหน้า (${monthLabel(oldVal)} → ${monthLabel(newVal)})\nงานที่ตัดสต็อกต่อจากนี้จะถูกนับว่าเป็นของ${monthLabel(newVal)}\n\nยืนยันหรือไม่?`
     : `งานที่ตัดสต็อกต่อจากนี้ จะถูกบันทึกลงเป็นของ${monthLabel(newVal)} ทันที\n\nยืนยันการเปลี่ยนเดือนหรือไม่?`;
   const ok = await uiConfirm(msg);
-  if (!ok) { sel.value = oldVal; return; }
+  if (!ok) { monthPickerSet('jobMonthSelect', oldVal); return; }
   currentJobMonth = String(newVal);
   setCurrentJobMonth(currentJobMonth);
 }
 
 function initHistoryMonthFilter() {
-  const sel = document.getElementById('historyMonthFilter');
-  if (!sel || sel.options.length > 1) return;
-  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `เดือน ${x.t}`; sel.appendChild(o); });
+  if (document.getElementById('historyMonthFilter').options.length > 1) return;
+  monthPickerInit('historyMonthFilter', 'ทุกเดือนงาน');
+  monthPickerSet('historyMonthFilter', '');
 }
 
 // รายการเหล็กของงานนี้ (ตามโค้ด+ปั๊ม) ที่ "ยังไม่ได้ตัด" เทียบกับ BOM เต็ม
@@ -1206,15 +1228,13 @@ function planProgress(code, month, qty, planId) {
 }
 
 function initPlanMonthSelect() {
-  const sel = document.getElementById('planMonthSelect');
-  sel.innerHTML = '';
-  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `แผนเดือน ${x.t}`; sel.appendChild(o); });
-  sel.value = planMonth;
+  monthPickerInit('planMonthSelect');
+  monthPickerSet('planMonthSelect', planMonth);
 }
 // จำเดือนที่เลือกในแท็บแผนงานไว้ (แยกจากเดือนงาน) ไม่งั้นรีโหลดแล้วจะกลับไปเดือนปัจจุบัน
 function getSavedPlanMonth() { try { const v = localStorage.getItem('bomcal_planMonth'); if (v) return v; } catch (e) {} return getCurrentJobMonth(); }
 function setSavedPlanMonth(v) { try { localStorage.setItem('bomcal_planMonth', String(v)); } catch (e) {} }
-function onPlanMonthChange() { planMonth = document.getElementById('planMonthSelect').value; setSavedPlanMonth(planMonth); renderPlan(); }
+function onPlanMonthChange() { planMonth = monthPickerValue('planMonthSelect'); setSavedPlanMonth(planMonth); renderPlan(); }
 
 const loadPlan = () => sharedFetch('plan', fetchPlan);
 async function fetchPlan() {
@@ -1273,6 +1293,7 @@ function renderPlan() {
   const list = document.getElementById('planList'), foot = document.getElementById('planFooter');
   if (!list) return;
   document.getElementById('planMonthSelect').disabled = planEditing;
+  document.getElementById('planMonthSelectYear').disabled = planEditing;
   const rows = planEditing ? planDraft : planRowsOf(planMonth);
   const bomLoaded = bomDatabase.length > 0;
   const total = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
@@ -1552,7 +1573,7 @@ async function openPlanJob(i) {
   const cands = mergeCandsFor(entry, r.id || '', r.qty);
   const target = cands.length ? cands.slice().sort((a, b) => (b._ts || 0) - (a._ts || 0))[0] : null;
   currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
-  document.getElementById('jobMonthSelect').value = currentJobMonth;
+  monthPickerSet('jobMonthSelect', currentJobMonth);
   currentPlanRowId = r.id || '';
   currentActiveJob = entry;
   applyJobToCalculator(Number(r.qty), { target });
@@ -2071,7 +2092,7 @@ function renderHistoryCal() {
   const [y, m] = historyCalMonth.split('-').map(Number);
   // นับเฉพาะงานที่ตัดเสร็จ โดยใช้คำค้นและเดือนงาน แต่ไม่ใช้วันที่และแท็บ
   const kw = (document.getElementById('historySearch').value || '').trim().toLowerCase();
-  const monthVal = document.getElementById('historyMonthFilter').value;
+  const monthVal = monthPickerValue('historyMonthFilter');
   const counts = {};
   historyJobs.filter(j => !kw || (j.jobCode + ' ' + j.jobName + ' ' + j.pump + ' ' + (j.by || j.user || '') + ' ' + (j.note || '')).toLowerCase().includes(kw))
     .filter(j => !monthVal || String(j.month || '') === monthVal)
@@ -2107,7 +2128,7 @@ function renderHistoryCal() {
 function renderHistoryList() {
   const kw = document.getElementById('historySearch').value.trim().toLowerCase();
   const dateVal = document.getElementById('historyDateFilter').value;
-  const monthVal = document.getElementById('historyMonthFilter').value;
+  const monthVal = monthPickerValue('historyMonthFilter');
   // ป้ายวันที่: ไม่ระบุวัน = "ทุกวัน", ระบุแล้ว = วันที่ที่เลือก
   document.getElementById('historyDateLabel').textContent = '📅 ' + (dateVal ? dateVal.split('-').reverse().join('/') : 'ทุกวัน');
   renderHistoryCal();
@@ -2352,7 +2373,7 @@ async function editJob(id) {
   mergeTarget = null;
   planQtyLock = true;
   currentJobMonth = String(card.month || ''); setCurrentJobMonth(currentJobMonth);
-  document.getElementById('jobMonthSelect').value = currentJobMonth;
+  monthPickerSet('jobMonthSelect', currentJobMonth);
   setAdjustMode(false);
   document.getElementById('selectedJobTitle').textContent = `✏️ แก้ไข: ${card.jobCode} - ${entry.name}`;
   document.getElementById('selectedJobPump').textContent = `ปั๊ม: ${entry.pump}`;
