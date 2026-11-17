@@ -474,10 +474,8 @@ function getMissingMetals(j) {
 // หมายเหตุของงานในแผน ที่ตรงกับรายการประวัตินี้ (รหัส + เดือน + จำนวน)
 // ป้ายปั๊มในคอลัมน์รหัสของแผนงาน (งานลูกค้าไม่แสดง)
 function planPumpBadge(r) {
-  if (isCustomCode(r.code)) return '';
-  return r.pump
-    ? `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`
-    : `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 text-[10px] font-extrabold">ยังไม่ระบุปั๊ม</div>`;
+  if (isCustomCode(r.code) || !r.pump) return '';
+  return `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`;
 }
 function planNoteOf(j) {
   if (!j || j.jobCode === 'ADJUST') return '';
@@ -1467,11 +1465,14 @@ async function pickPlanCode() {
 async function pickPumpFor(code, current) {
   const entries = bomEntriesOf(code);
   if (!entries.length) return '';
-  if (entries.length === 1) return entries[0].pump;
+  // รหัสที่มีปั๊มแยกใน BOM อยู่แล้ว ให้เลือกจากปั๊มเหล่านั้น / รหัสที่ไม่มีปั๊มแยก ให้เลือก ปั๊มปกติ หรือ ปั๊มกาก
+  const multi = entries.length > 1;
+  const options = multi ? entries.map(e => e.pump) : ['ปั๊มปกติ', 'ปั๊มกาก'];
   const sel = document.createElement('select');
   sel.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
-  entries.forEach(e => { const o = document.createElement('option'); o.value = e.pump; o.textContent = `ปั๊ม: ${e.pump}`; if (e.pump === current) o.selected = true; sel.appendChild(o); });
-  if (!(await uiDialog(`รหัส ${code} มีหลายปั๊ม เลือกปั๊มของงานนี้ (จะจำไว้กับแผน)`, true, sel))) return null;
+  options.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; if (p === current) o.selected = true; sel.appendChild(o); });
+  const msg = multi ? `รหัส ${code} มีหลายปั๊ม เลือกปั๊มของงานนี้ (จะจำไว้กับแผน)` : `รหัส ${code} เลือกปั๊มของงานนี้ (จะจำไว้กับแผน)`;
+  if (!(await uiDialog(msg, true, sel))) return null;
   return sel.value;
 }
 async function changePlanCode(i) {
