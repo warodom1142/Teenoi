@@ -379,6 +379,23 @@ let cutData = [], cutGroups = {}, cutLoaded = false;
 
 // ===== เดือนงาน / กลุ่มงาน (รวมตัดหลายวันเป็นการ์ดเดียว) =====
 const TH_MONTHS = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+// เดือนของแผน/งาน: ค่าแบบเดิม "1".."12" = ปี 2026 (พ.ศ. 2569), ค่าแบบมีปี เช่น "2027-01" = ปี 2027 (พ.ศ. 2570)
+const LEGACY_YEAR = 2026;
+function parseMonthKey(v) {
+  const s = String(v || '').trim();
+  const m = s.match(/^(\d{4})-(\d{1,2})$/);
+  if (m) return { y: +m[1], m: +m[2] };
+  const n = parseInt(s, 10);
+  return n >= 1 && n <= 12 ? { y: LEGACY_YEAR, m: n } : null;
+}
+function monthKeyNum(v) { const p = parseMonthKey(v); return p ? p.y * 12 + p.m : 0; }
+function monthLabel(v) { const p = parseMonthKey(v); return p ? `${TH_MONTHS[p.m]} ${p.y + 543}` : ''; }
+function monthOptionList() {
+  const out = [];
+  for (let m = 1; m <= 12; m++) out.push({ v: String(m), t: `${TH_MONTHS[m]} ${LEGACY_YEAR + 543}` });
+  for (let m = 1; m <= 12; m++) out.push({ v: `${LEGACY_YEAR + 1}-${String(m).padStart(2, '0')}`, t: `${TH_MONTHS[m]} ${LEGACY_YEAR + 1 + 543}` });
+  return out;
+}
 function todayStr() { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
 function getCurrentJobMonth() {
   try { const v = localStorage.getItem('bomcal_jobMonth'); if (v) return v; } catch (e) {}
@@ -401,20 +418,16 @@ function initJobMonthSelect() {
   const sel = document.getElementById('jobMonthSelect');
   if (!sel) return;
   sel.innerHTML = '';
-  for (let m = 1; m <= 12; m++) {
-    const o = document.createElement('option');
-    o.value = m; o.textContent = `เดือน ${m} (${TH_MONTHS[m]})`;
-    sel.appendChild(o);
-  }
+  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `เดือน ${x.t}`; sel.appendChild(o); });
   sel.value = currentJobMonth;
 }
 
 async function onJobMonthChange(sel) {
-  const newVal = parseInt(sel.value, 10), oldVal = parseInt(currentJobMonth, 10);
-  if (newVal === oldVal) return;
-  const msg = newVal < oldVal
-    ? `กำลังย้อนกลับไปเดือนก่อนหน้า (เดือน ${oldVal} → เดือน ${newVal})\nงานที่ตัดสต็อกต่อจากนี้จะถูกนับว่าเป็นของเดือน ${newVal} (${TH_MONTHS[newVal]})\n\nยืนยันหรือไม่?`
-    : `งานที่ตัดสต็อกต่อจากนี้ จะถูกบันทึกลงเป็นของเดือน ${newVal} (${TH_MONTHS[newVal]}) ทันที\n\nยืนยันการเปลี่ยนเดือนหรือไม่?`;
+  const newVal = sel.value, oldVal = currentJobMonth;
+  if (monthKeyNum(newVal) === monthKeyNum(oldVal)) return;
+  const msg = monthKeyNum(newVal) < monthKeyNum(oldVal)
+    ? `กำลังย้อนกลับไปเดือนก่อนหน้า (${monthLabel(oldVal)} → ${monthLabel(newVal)})\nงานที่ตัดสต็อกต่อจากนี้จะถูกนับว่าเป็นของ${monthLabel(newVal)}\n\nยืนยันหรือไม่?`
+    : `งานที่ตัดสต็อกต่อจากนี้ จะถูกบันทึกลงเป็นของ${monthLabel(newVal)} ทันที\n\nยืนยันการเปลี่ยนเดือนหรือไม่?`;
   const ok = await uiConfirm(msg);
   if (!ok) { sel.value = oldVal; return; }
   currentJobMonth = String(newVal);
@@ -424,11 +437,7 @@ async function onJobMonthChange(sel) {
 function initHistoryMonthFilter() {
   const sel = document.getElementById('historyMonthFilter');
   if (!sel || sel.options.length > 1) return;
-  for (let m = 1; m <= 12; m++) {
-    const o = document.createElement('option');
-    o.value = m; o.textContent = `เดือน ${m} (${TH_MONTHS[m]})`;
-    sel.appendChild(o);
-  }
+  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `เดือน ${x.t}`; sel.appendChild(o); });
 }
 
 // รายการเหล็กของงานนี้ (ตามโค้ด+ปั๊ม) ที่ "ยังไม่ได้ตัด" เทียบกับ BOM เต็ม
@@ -1199,11 +1208,7 @@ function planProgress(code, month, qty, planId) {
 function initPlanMonthSelect() {
   const sel = document.getElementById('planMonthSelect');
   sel.innerHTML = '';
-  for (let m = 1; m <= 12; m++) {
-    const o = document.createElement('option');
-    o.value = m; o.textContent = `แผนเดือน ${m} (${TH_MONTHS[m]})`;
-    sel.appendChild(o);
-  }
+  monthOptionList().forEach(x => { const o = document.createElement('option'); o.value = x.v; o.textContent = `แผนเดือน ${x.t}`; sel.appendChild(o); });
   sel.value = planMonth;
 }
 // จำเดือนที่เลือกในแท็บแผนงานไว้ (แยกจากเดือนงาน) ไม่งั้นรีโหลดแล้วจะกลับไปเดือนปัจจุบัน
@@ -1623,7 +1628,7 @@ function openPlanImport() {
   ov.style.zIndex = '100000';
   ov.innerHTML = `<div class="w-full max-w-lg mx-auto bg-white min-h-full p-3 space-y-3">
     <div class="flex items-center justify-between sticky top-0 bg-white py-1" style="z-index:5">
-      <span class="font-extrabold text-base text-blue-950"><i class="fa-solid fa-camera text-blue-600"></i> นำเข้าแผนเดือน ${esc(planMonth)} (${esc(TH_MONTHS[parseInt(planMonth, 10)] || '')})</span>
+      <span class="font-extrabold text-base text-blue-950"><i class="fa-solid fa-camera text-blue-600"></i> นำเข้าแผนเดือน ${esc(monthLabel(planMonth))}</span>
       <button type="button" data-x="1" class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 text-lg" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <label class="block w-full py-2 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl cursor-pointer">
@@ -1971,7 +1976,7 @@ function renderSummary() {
       const ot = r.other ? (r.other > 0 ? '+' : '') + formatNum(r.other) : '-';
       return `<tr><td class="nm">${esc(r.name)}</td><td>${formatNum(r.start)}</td><td data-cnt="sum-${esc(k)}-${c}-used" data-to="${r.wd - r.ret}" class="text-purple-700 font-bold">${formatNum(r.wd - r.ret)}</td><td class="${oc} font-bold">${ot}</td><td data-cnt="sum-${esc(k)}-${c}-end" data-to="${r.end}" class="font-extrabold">${formatNum(r.end)}</td></tr>`;
     }).join('');
-    const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${k} (${TH_MONTHS[parseInt(k, 10)] || ''})`;
+    const label = k === '-' ? 'ไม่ระบุเดือน' : `แผนเดือน ${monthLabel(k)}`;
     html += `<div class="border border-slate-200 rounded-2xl p-2 bg-slate-50 space-y-2">
       <div class="font-extrabold text-sm text-blue-950">${label} <span class="text-xs text-slate-500 font-bold">· ${jobs} งาน</span></div>
       ${codes.length ? `<div class="overflow-x-auto rounded-xl border border-slate-300 bg-white"><table class="plan-table sum-table sum-fit">
@@ -2174,7 +2179,7 @@ function openHistoryJob(id) {
   const adj = j.jobCode === 'ADJUST';
   const box = document.getElementById('historyDetail');
   const who = `<div>ผู้ตัดล่าสุด: ${esc(j.by || j.user || '-')}</div>`;
-  const monthLine = (!adj && j.month) ? `<div>เดือนงาน: ${esc(j.month)} (${esc(TH_MONTHS[parseInt(j.month, 10)] || '')})</div>` : '';
+  const monthLine = (!adj && j.month) ? `<div>เดือนงาน: ${esc(monthLabel(j.month))}</div>` : '';
   const head = adj ? `<div class="p-3 bg-sky-50 border border-sky-300 rounded-2xl space-y-1 text-sm font-bold text-sky-950">
       <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>ประเภท: ปรับสต็อก (ไม่ใช่งานผลิต)</div><div>หมายเหตุ: ${esc(j.pump)}</div></div>`
     : `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm font-bold text-emerald-950">

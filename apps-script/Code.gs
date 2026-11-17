@@ -223,6 +223,7 @@ function commit_(ss, d) {
       by, x.scrap, '', '', '',
       month, groupId, note, String(d.planRowId || '').slice(0, 60)]);
   });
+  logSh.getRange(logSh.getLastRow() + 1, 22, logRows.length, 1).setNumberFormat('@');   // เดือนงาน (คอลัมน์ V) เป็นข้อความ
   logSh.getRange(logSh.getLastRow() + 1, 1, logRows.length, LOG_HEADERS.length).setValues(logRows);
   SpreadsheetApp.flush();
 
@@ -304,6 +305,7 @@ function edit_(ss, d) {
   touched.forEach(c => { const i = st.rowOf[c]; if (i !== undefined) stockSh.getRange(i + 1, 3).setValue(cur[c]); });
   // ทำเครื่องหมายรอบเดิมว่ายกเลิก
   hit.forEach(h => logSh.getRange(h.sheetRow, 19, 1, 3).setValues([[CANCELLED, by, now]]));
+  logSh.getRange(logSh.getLastRow() + 1, 22, logRows.length, 1).setNumberFormat('@');   // เดือนงาน (คอลัมน์ V) เป็นข้อความ
   logSh.getRange(logSh.getLastRow() + 1, 1, logRows.length, LOG_HEADERS.length).setValues(logRows);
   SpreadsheetApp.flush();
 
@@ -437,7 +439,7 @@ function getPlan_(ss) {
 // บันทึกแผนของ "เดือนเดียว" แทนที่ของเดิมทั้งเดือน (เดือนอื่นไม่กระทบ)
 function planSave_(ss, d) {
   const month = String(d.month || '').trim();
-  if (!/^(1[0-2]|[1-9])$/.test(month)) return fail_('validation', 'เดือนไม่ถูกต้อง');
+  if (!/^(\d{4}-(0[1-9]|1[0-2])|1[0-2]|[1-9])$/.test(month)) return fail_('validation', 'เดือนไม่ถูกต้อง');   // "1".."12" = ปีเดิม, "2027-01" = ระบุปี
   if (!Array.isArray(d.rows) || d.rows.length > 300) return fail_('validation', 'ข้อมูลแผนไม่ถูกต้อง');
   const rows = d.rows.map(r => ({
     section: String(r.section || '').trim().slice(0, 60),
@@ -455,6 +457,7 @@ function planSave_(ss, d) {
   const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump]));
   if (last >= 2) sh.getRange(2, 1, last - 1, 7).clearContent();
   if (all.length) {
+    sh.getRange(2, 1, all.length, 1).setNumberFormat('@');   // เดือน (รองรับ "2027-01") เก็บเป็นข้อความ ไม่ให้ชีทแปลงเป็นวันที่
     sh.getRange(2, 3, all.length, 1).setNumberFormat('@');   // เก็บรหัสเป็นข้อความ ไม่ให้เลขศูนย์นำหน้าหาย
     sh.getRange(2, 1, all.length, 7).setValues(all);
   }
