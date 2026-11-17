@@ -2242,7 +2242,7 @@ function buildCutNotice(o) {
   const note = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
   // ชื่องานเอามาด้วย แต่ตัดรายละเอียดในวงเล็บออก เช่น "RO FAST PURE 12,000 LPD (PLD 2-11)" -> "RO FAST PURE 12,000 LPD"
   const nm = String(o.jobName || '').replace(/\(.*?\)/g, ' ').replace(/\s+/g, ' ').trim();
-  const head = `งาน ${o.jobCode}${nm ? ' ' + nm : ''}\nจำนวน ${qtyTxt} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
+  const head = `งาน ${o.jobCode}${nm ? '\n' + nm : ''}\nจำนวน ${qtyTxt} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
   if (!remain.length) return `${head}\n\n✅ จบงานเรียบร้อย` + list('✂️ ตัดแล้ว', cutNow);
   return head + list('✂️ ตัดแล้ว', cutNow) + list('📦 คงเหลือ', remain);
 }
