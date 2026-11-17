@@ -472,6 +472,13 @@ function getMissingMetals(j) {
 }
 
 // หมายเหตุของงานในแผน ที่ตรงกับรายการประวัตินี้ (รหัส + เดือน + จำนวน)
+// ป้ายปั๊มในคอลัมน์รหัสของแผนงาน (งานลูกค้าไม่แสดง)
+function planPumpBadge(r) {
+  if (isCustomCode(r.code)) return '';
+  return r.pump
+    ? `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`
+    : `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 text-[10px] font-extrabold">ยังไม่ระบุปั๊ม</div>`;
+}
 function planNoteOf(j) {
   if (!j || j.jobCode === 'ADJUST') return '';
   const r = planAll.find(p => (p.id || '') === (j.planRowId || '') && String(p.code) === String(j.jobCode) && String(p.month) === String(j.month) && p.note);
@@ -1341,10 +1348,10 @@ function renderPlan() {
       const missing = bomLoaded && !entries.length;
       const nameCell = !bomLoaded ? '<span class="text-slate-400">กำลังโหลด BOM...</span>'
         : missing ? '<span class="text-rose-700 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> ไม่พบรหัสนี้ใน BOM</span>'
-        : `${esc((entries.find(e => e.pump === r.pump) || entries[0]).name)}${r.pump ? `<div class="text-[10px] font-semibold text-slate-500">ปั๊ม: ${esc(r.pump)}</div>` : ''}`;
+        : esc((entries.find(e => e.pump === r.pump) || entries[0]).name);
       if (planEditing) {
         html += `<tr class="${missing ? 'bg-rose-50' : (planMovedRef === r ? 'bg-amber-200' : '')}"><td class="font-extrabold">${n + 1}</td>
-          <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-blue-100 text-blue-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button></td>
+          <td><button type="button" onclick="changePlanCode(${i})" class="w-full px-1 py-1 bg-blue-100 text-blue-800 rounded-md font-bold text-[11px]">${esc(r.code)} <i class="fa-solid fa-pen"></i></button>${planPumpBadge(r)}</td>
           <td class="nm">${nameCell}<input type="text" value="${esc(r.note || '')}" placeholder="หมายเหตุ" maxlength="200" onchange="setPlanNote(${i}, this.value)" class="w-full mt-1 p-1 text-[11px] font-semibold border border-amber-300 rounded-md bg-amber-50"></td>
           <td><input type="text" inputmode="numeric" value="${esc(r.qty)}" onchange="setPlanQty(${i}, this.value)" class="w-full p-1 text-center border border-slate-300 rounded-md font-bold"></td>
           <td><input type="text" inputmode="decimal" value="${unitPer(r) || ''}" placeholder="-" onchange="setPlanUnits(${i}, this.value)" class="w-full p-1 text-center border border-emerald-300 rounded-md font-bold"></td>
@@ -1355,7 +1362,7 @@ function renderPlan() {
         const isCustomRow = isCustomCode(r.code);
         if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
         const prCell = isCustomRow ? '<span class="inline-block text-[11px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-lg px-2 py-1">custom</span>' : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
-        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(r.code)}</td>
+        html += `<tr class="plan-row ${missing ? 'bg-rose-50' : ''}" onclick="${pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td>${n + 1}</td><td class="font-bold">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(r.code) + planPumpBadge(r)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-bold">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
