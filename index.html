@@ -1404,7 +1404,7 @@ async function askPin(msg) {
 
 async function startPlanEdit() {
   if (!(await askPin('ใส่รหัสเพื่อแก้ไขแผนงาน'))) return;
-  planDraft = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '' }));
+  planDraft = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, pump: r.pump || '', qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '' }));
   planEditing = true; renderPlan();
 }
 function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
