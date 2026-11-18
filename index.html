@@ -1462,11 +1462,9 @@ async function pickPlanCode() {
   return bill ? CUSTOM_CODE + ':' + bill : CUSTOM_CODE;
 }
 // เลือกปั๊มของรหัสที่มีหลายปั๊ม แล้วจำไว้กับแถวแผน (คืน null ถ้ากดยกเลิก)
-// งานตู้น้ำ (อยู่หมวดตู้น้ำ หรือชื่อมี stand ss / ถัง PE) ไม่มีปั๊ม
+// งานที่อยู่ในหมวดตู้น้ำ ไม่มีปั๊ม
 function isWaterCoolerJob(code, section) {
-  if (/ตู้น้ำ/.test(String(section || ''))) return true;
-  const e = bomEntriesOf(code)[0];
-  return !!e && /stand\s*ss|ถัง\s*pe/i.test(String(e.name || ''));
+  return /ตู้น้ำ/.test(String(section || ''));
 }
 async function pickPumpFor(code, current, section) {
   if (isWaterCoolerJob(code, section)) return '';
