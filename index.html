@@ -1462,7 +1462,14 @@ async function pickPlanCode() {
   return bill ? CUSTOM_CODE + ':' + bill : CUSTOM_CODE;
 }
 // เลือกปั๊มของรหัสที่มีหลายปั๊ม แล้วจำไว้กับแถวแผน (คืน null ถ้ากดยกเลิก)
-async function pickPumpFor(code, current) {
+// งานตู้น้ำ (อยู่หมวดตู้น้ำ หรือชื่อมี stand ss / ถัง PE) ไม่มีปั๊ม
+function isWaterCoolerJob(code, section) {
+  if (/ตู้น้ำ/.test(String(section || ''))) return true;
+  const e = bomEntriesOf(code)[0];
+  return !!e && /stand\s*ss|ถัง\s*pe/i.test(String(e.name || ''));
+}
+async function pickPumpFor(code, current, section) {
+  if (isWaterCoolerJob(code, section)) return '';
   const entries = bomEntriesOf(code);
   if (!entries.length) return '';
   // รหัสที่มีปั๊มแยกใน BOM อยู่แล้ว ให้เลือกจากปั๊มเหล่านั้น / รหัสที่ไม่มีปั๊มแยก ให้เลือก ปั๊มปกติ หรือ ปั๊มกาก
@@ -1479,7 +1486,7 @@ async function changePlanCode(i) {
   const code = await pickPlanCode();
   if (!code || !planDraft[i]) return;
   let pump = '';
-  if (!isCustomCode(code)) { pump = await pickPumpFor(code, ''); if (pump === null) return; }
+  if (!isCustomCode(code)) { pump = await pickPumpFor(code, '', section); if (pump === null) return; }
   planDraft[i].code = code; planDraft[i].pump = pump; planDraft[i].units = unitMap[code] || 0; renderPlan();
 }
 function setPlanQty(i, v) {
@@ -1512,7 +1519,7 @@ async function addPlanRow(section) {
   const code = await pickPlanCode();
   if (!code) return;
   let pump = '';
-  if (!isCustomCode(code)) { pump = await pickPumpFor(code, ''); if (pump === null) return; }
+  if (!isCustomCode(code)) { pump = await pickPumpFor(code, '', planDraft[i].section); if (pump === null) return; }
   planDraft.push({ id: newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
@@ -1570,7 +1577,7 @@ async function openPlanJob(i) {
   if (!entries.length) return uiAlert(`ไม่พบรหัส ${r.code} ใน BOM\nกด "แก้ไข" เพื่อเปลี่ยนรหัสในแผน`);
   let entry = r.pump ? entries.find(e => e.pump === r.pump) : null;   // มีปั๊มที่จำไว้แล้ว ไม่ต้องถามซ้ำ
   if (!entry) entry = entries[0];
-  if (!entry || (!r.pump && entries.length > 1)) {
+  if (!entry || (!r.pump && entries.length > 1 && !isWaterCoolerJob(r.code, r.section))) {
     const sel = document.createElement('select');
     sel.className = 'w-full p-2 border-2 border-blue-300 rounded-lg font-bold text-xs bg-white';
     entries.forEach(e => { const o = document.createElement('option'); o.textContent = `ปั๊ม: ${e.pump}`; sel.appendChild(o); });
