@@ -1646,8 +1646,10 @@ async function addPlanRow(section) {
   if (!isCustomCode(code)) { pump = await pickPumpFor(code, '', section || ''); if (pump === null) return; }
   // ถ้าเคยลบแถวนี้ออกจากแผน แต่ประวัติยังมีงานรหัส/ปั๊ม/เดือนเดียวกัน ให้ผูกกลับกับแถวเดิม ความคืบหน้าจะกลับมาโชว์
   const usedIds = new Set(planDraft.map(r => String(r.id || '')));
-  const reuse = historyJobs.find(h => !h.cancelled && h.jobCode === code && (h.pump || '') === (pump || '')
-    && monthKeyNum(h.month) === monthKeyNum(planMonth) && h.planRowId && !usedIds.has(String(h.planRowId)));
+  // งานเก่าในประวัติอาจยังไม่ได้ระบุปั๊ม จึงรองรับแถวที่ไม่มีปั๊มด้วย (หลังจากหาปั๊มที่ตรงก่อน)
+  const hist = historyJobs.filter(h => !h.cancelled && h.jobCode === code && monthKeyNum(h.month) === monthKeyNum(planMonth)
+    && h.planRowId && !usedIds.has(String(h.planRowId)));
+  const reuse = hist.find(h => (h.pump || '') === (pump || '')) || hist.find(h => !h.pump);
   planDraft.push({ id: reuse ? String(reuse.planRowId) : newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
