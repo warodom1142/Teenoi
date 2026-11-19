@@ -499,9 +499,19 @@ function getOrCreateGroupId(key) {
 
 function initJobMonthSelect() {
   monthPickerInit('jobMonthSelect');
-  monthPickerSet('jobMonthSelect', currentJobMonth);
+  monthPickerSet('jobMonthSelect', currentJobMonth); updateJobMonthUI();
 }
 
+// เดือนงาน: งานที่มาจากแผน/แก้ไขรายการที่มีแผน ซ่อนปุ่มเดือน/ปี ใช้เดือนของแผนอัตโนมัติ
+function updateJobMonthUI() {
+  const fromPlan = !!currentPlanRowId || !!(editTarget && editTarget.planRowId);
+  const wrap = document.getElementById('jobMonthSelectWrap');
+  const lbl = document.querySelector('label[for="jobMonthSelect"]');
+  if (wrap) wrap.classList.toggle('hidden', fromPlan);
+  if (lbl) lbl.innerHTML = fromPlan
+    ? `<i class="fa-solid fa-calendar-days"></i> เดือนงาน: <b>${esc(monthLabel(currentJobMonth))}</b> <span class="text-[10px] text-blue-600">(จากแผน)</span>`
+    : '<i class="fa-solid fa-calendar-days"></i> เดือนงาน:';
+}
 async function onJobMonthChange() {
   const newVal = monthPickerValue('jobMonthSelect'), oldVal = currentJobMonth;
   if (monthKeyNum(newVal) === monthKeyNum(oldVal)) return;
@@ -734,6 +744,7 @@ function previewMetalList() {
   if (!item) return;
   currentActiveJob = item;
   currentPlanRowId = '';
+  updateJobMonthUI();
   const keys = Object.keys(item.metals || {});
   document.getElementById('previewCount').textContent = `${keys.length} รายการ`;
   box.innerHTML = '';
@@ -1701,7 +1712,7 @@ async function openPlanJob(i) {
   const cands = mergeCandsFor(entry, r.id || '', r.qty);
   const target = cands.length ? cands.slice().sort((a, b) => (b._ts || 0) - (a._ts || 0))[0] : null;
   currentJobMonth = String(r.month); setCurrentJobMonth(currentJobMonth);
-  monthPickerSet('jobMonthSelect', currentJobMonth);
+  monthPickerSet('jobMonthSelect', currentJobMonth); updateJobMonthUI();
   currentPlanRowId = r.id || '';
   currentActiveJob = entry;
   applyJobToCalculator(Number(r.qty), { target });
@@ -2507,7 +2518,7 @@ async function editJob(id) {
   mergeTarget = null;
   planQtyLock = true;
   currentJobMonth = String(card.month || ''); setCurrentJobMonth(currentJobMonth);
-  monthPickerSet('jobMonthSelect', currentJobMonth);
+  monthPickerSet('jobMonthSelect', currentJobMonth); updateJobMonthUI();
   setAdjustMode(false);
   document.getElementById('selectedJobTitle').textContent = `✏️ แก้ไข: ${card.jobCode} - ${entry.name}`;
   document.getElementById('selectedJobPump').textContent = `ปั๊ม: ${entry.pump}`;
@@ -2975,6 +2986,7 @@ function exitEditMode() {
 function clearJobPanel() {
   exitEditMode();
   currentPlanRowId = '';
+  updateJobMonthUI();
   currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
   updateMergeInfo();
   setAdjustMode(false);
