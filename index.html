@@ -1292,9 +1292,12 @@ function planProgress(code, month, qty, planId) {
     if (!names.length) return;
     const cut = new Set();
     historyJobs.forEach(h => {
-      if (h.cancelled || h.jobCode !== e.code || h.pump !== e.pump || String(h.month) !== String(month)) return;
-      // แถวในแผนที่มีรหัส นับเฉพาะการตัดที่มาจากแถวนั้น / แถวเก่าที่ไม่มีรหัส นับเฉพาะการตัดเก่าที่ไม่มีรหัส
-      if ((h.planRowId || '') !== (planId || '')) return;
+      // ปั๊มเก่าที่ไม่อยู่ใน BOM (เช่น "ปั๊มทั่วไป / ไม่ระบุ") ถือว่าเป็นของปั๊มนี้ได้
+      const legacyPump = !bomEntriesOf(code).some(x => x.pump === h.pump);
+      if (h.cancelled || h.jobCode !== e.code || !(h.pump === e.pump || legacyPump) || String(h.month) !== String(month)) return;
+      // การตัดเก่าที่ไม่มีรหัสแถว นับกับแถวเดียวของรหัสนั้นในเดือนนั้น
+      const legacyRow = !h.planRowId && planRowsOf(month).filter(r => r.code === code).length === 1;
+      if (!legacyRow && (h.planRowId || '') !== (planId || '')) return;
       if (qty !== undefined && Number(h.qty) !== Number(qty)) return;   // รหัสเดียวกันแต่จำนวนต่างกัน = คนละงาน
       (h.items || []).forEach(it => cut.add(it.name));
     });
