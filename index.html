@@ -133,6 +133,8 @@ input[type=text],input[type=search],input[type=password],select,textarea{font-si
 .plan-table tr.plan-cancel td{background:repeating-linear-gradient(-45deg,#f8fafc 0 7px,#e9edf2 7px 14px);color:#64748b;border-color:#cbd5e1}
 .plan-table tr.plan-cancel td.nm,.plan-table tr.plan-cancel td.cx{text-decoration:line-through;text-decoration-thickness:1px}
 .plan-table tr.plan-cancel td.nm{font-weight:500}
+.hist-plan-cancel{background:repeating-linear-gradient(-45deg,#f8fafc 0 7px,#e9edf2 7px 14px);border-color:#cbd5e1!important}
+html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 0 7px,#162033 7px 14px);border-color:#334155!important}
 .plan-bar{height:5px;border-radius:9999px;background:#e2e8f0;overflow:hidden;margin-top:3px}
 .plan-bar>i{display:block;height:100%;border-radius:9999px}
 .split-table th,.split-table td{font-size:14px;padding:8px 4px}
@@ -487,6 +489,10 @@ function getMissingMetals(j) {
 function planPumpBadge(r) {
   if (isCustomCode(r.code) || !r.pump) return '';
   return `<div class="mt-0.5 block w-fit mx-auto px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`;
+}
+function planRowCancelledOf(j) {
+  if (!j || !j.planRowId) return false;
+  return planAll.some(p => (p.id || '') === String(j.planRowId) && String(p.code) === String(j.jobCode) && String(p.month) === String(j.month) && p.cancelled);
 }
 function planNoteOf(j) {
   if (!j || j.jobCode === 'ADJUST') return '';
@@ -2190,13 +2196,16 @@ function renderHistoryList() {
   }
   list.innerHTML = rows.map(j => {
     const adj = j.jobCode === 'ADJUST';
+    const pCancel = !j.cancelled && !adj && planRowCancelledOf(j);
+    const pBadge = pCancel ? '<span class="ml-1 text-[10px] bg-rose-50 text-rose-700 border border-rose-300 font-extrabold px-1.5 py-0.5 rounded-full">ยกเลิกในแผน</span>' : '';
     const cls = j.cancelled
       ? 'bg-red-50 hover:bg-red-100 border-red-300'
+      : pCancel ? 'hist-plan-cancel text-slate-500'
       : adj
       ? 'bg-sky-50 hover:bg-sky-100 border-sky-300'
       : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300';
-    const titleCls = j.cancelled ? 'text-red-900' : adj ? 'text-sky-900' : 'text-emerald-950';
-    const subTextCls = j.cancelled ? 'text-red-800' : 'text-slate-700';
+    const titleCls = j.cancelled ? 'text-red-900' : pCancel ? 'text-slate-600' : adj ? 'text-sky-900' : 'text-emerald-950';
+    const subTextCls = j.cancelled ? 'text-red-800' : pCancel ? 'text-slate-500' : 'text-slate-700';
     const detailTextCls = j.cancelled ? 'text-red-700' : 'text-slate-500';
     const badge = j.cancelled ? '<span class="ml-1 text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">ยกเลิกแล้ว</span>' : '';
     const monthBadge = j.month ? `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">เดือน ${esc(j.month)}</span>` : '';
@@ -2209,7 +2218,7 @@ function renderHistoryList() {
 
     return `<button type="button" data-id="${esc(j.id)}" onclick="openHistoryJob(this.dataset.id)" class="w-full text-left p-4 border rounded-2xl shadow-sm ${cls}">
       <div class="flex justify-between items-center">
-        <span class="font-extrabold text-sm ${titleCls}">${adj ? '<i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก' : esc(j.jobCode)}${badge}${monthBadge}</span>
+        <span class="font-extrabold text-sm ${titleCls}">${adj ? '<i class="fa-solid fa-screwdriver-wrench"></i> ปรับสต็อก' : `<span class="${pCancel ? 'line-through' : ''}">${esc(j.jobCode)}</span>`}${badge}${pBadge}${monthBadge}</span>
         <span class="text-xs font-bold ${j.cancelled ? 'text-red-700' : 'text-slate-500'}">${esc(j.time)}</span>
       </div>
       ${planNoteLine}
