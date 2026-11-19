@@ -427,6 +427,18 @@ function monthPickerInit(id, allLabel) {
   if (allLabel) add(sel, '', allLabel);
   for (let m = 1; m <= 12; m++) add(sel, String(m), `${m}. ${TH_MONTHS[m]}`);
   [LEGACY_YEAR, LEGACY_YEAR + 1].forEach(y => add(yr, String(y), String(y + 543)));
+  // ปุ่มกดแทนดรอปดาว (ข้ามแผนงาน เพราะมีปุ่มของตัวเองแล้ว)
+  if (id !== 'planMonthSelect') {
+    sel.classList.add('hidden'); yr.classList.add('hidden');
+    if (!document.getElementById(id + 'Wrap')) {
+      const wrap = document.createElement('div');
+      wrap.id = id + 'Wrap';
+      wrap.className = 'flex gap-1 flex-1 min-w-0';
+      wrap.innerHTML = `<button type="button" id="${id}Btn" onclick="openMonthPick('${id}')" class="flex-1 min-w-0 p-1.5 border-2 border-blue-300 rounded-lg font-extrabold text-xs bg-white text-slate-800"></button><button type="button" id="${id}YearBtn" onclick="openYearPick('${id}')" class="w-20 p-1.5 border-2 border-blue-300 rounded-lg font-extrabold text-xs bg-white text-slate-800"></button>`;
+      sel.after(wrap);
+    }
+  }
+  syncMonthBtns(id);
 }
 function monthPickerValue(id) {
   const m = document.getElementById(id).value;
@@ -437,9 +449,35 @@ function monthPickerValue(id) {
 function monthPickerSet(id, key) {
   const p = parseMonthKey(key);
   const sel = document.getElementById(id), yr = document.getElementById(id + 'Year');
-  if (!p) { if (sel && sel.querySelector('option[value=""]')) sel.value = ''; return; }
+  if (!p) { if (sel && sel.querySelector('option[value=""]')) sel.value = ''; syncMonthBtns(id); return; }
   sel.value = String(p.m);
   yr.value = String(p.y);
+  syncMonthBtns(id);
+}
+function syncMonthBtns(id) {
+  const sel = document.getElementById(id), yr = document.getElementById(id + 'Year');
+  const mb = document.getElementById(id + 'Btn'), yb = document.getElementById(id + 'YearBtn');
+  if (!sel || !yr || !mb || !yb) return;
+  mb.textContent = sel.value ? TH_MONTHS[Number(sel.value)] : (sel.querySelector('option[value=""]') ? 'ทุกเดือน' : '-');
+  yb.textContent = sel.value && yr.value ? String(Number(yr.value) + 543) : '-';
+  yb.disabled = !sel.value;
+  yb.classList.toggle('opacity-50', !sel.value);
+}
+async function openMonthPick(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const opts = [...sel.options].map(o => ({ v: o.value, t: o.value ? TH_MONTHS[Number(o.value)] : o.textContent }));
+  const v = await pickGrid(opts, sel.value, 4, 'เลือกเดือน');
+  if (v === null) return;
+  sel.value = v; syncMonthBtns(id); sel.dispatchEvent(new Event('change'));
+}
+async function openYearPick(id) {
+  const sel = document.getElementById(id), yr = document.getElementById(id + 'Year');
+  if (!sel || !yr || !sel.value) return;
+  const opts = [...yr.options].map(o => ({ v: o.value, t: String(Number(o.value) + 543) }));
+  const v = await pickGrid(opts, yr.value, 2, 'เลือกปี');
+  if (v === null) return;
+  yr.value = v; syncMonthBtns(id); sel.dispatchEvent(new Event('change'));
 }
 function todayStr() { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
 function getCurrentJobMonth() {
