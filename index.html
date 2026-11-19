@@ -2425,7 +2425,7 @@ function openHistoryJob(id) {
 
   const lineBtn = adj ? '' : `<button type="button" data-id="${esc(j.id)}" onclick="shareHistoryLine(this.dataset.id)" class="w-full py-2.5 mb-2 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm rounded-xl"><i class="fa-brands fa-line"></i> ส่งรูปผลการตัดเข้าไลน์</button>`;
 
-  box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + pCancelBanner + banner + lineBtn + cards;
+  box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + pCancelBanner + cards + banner + lineBtn;
   document.getElementById('historyListView').classList.add('hidden');
   box.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
