@@ -84,7 +84,7 @@ body.adjust-mode .status-banner,body.adjust-mode .scrap-box{display:none}
 input[type=text],input[type=search],input[type=password],select,textarea{font-size:16px!important}
 .page{display:none}.page.active{display:block}
 .nav-btn{flex:1;height:40px;border-radius:9999px;font-size:20px;color:#475569;display:flex;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s,color .15s}
-.nav-btn.nav-active{background:#dbeafe;color:#1d4ed8}
+.nav-btn.nav-active{background:var(--t,#dbeafe);color:var(--c,#1d4ed8)}
 .nav-btn{flex-direction:column;height:52px;gap:3px;font-size:18px}
 .nav-lbl{font-size:11px;font-weight:800;line-height:1;white-space:nowrap;font-family:'Kanit','Prompt',sans-serif}
 .nav-btn.nav-home{flex:0 0 68px;width:68px;height:68px;margin:-34px 4px 0;border-radius:9999px;background:linear-gradient(160deg,#3b82f6,#1d4ed8)!important;color:#fff!important;border:4px solid #fff;box-shadow:0 8px 20px rgba(29,78,216,.45);font-size:22px;gap:2px}
@@ -355,11 +355,11 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
 
 <nav class="fixed left-0 right-0 flex justify-center pointer-events-none" style="bottom:calc(14px + env(safe-area-inset-bottom));z-index:9000">
   <div class="pointer-events-auto flex items-center gap-1 bg-white rounded-full p-1.5 border border-slate-200" style="width:calc(100% - 28px);max-width:480px;box-shadow:0 6px 24px rgba(15,23,42,.18)">
-    <button id="tabCalc" type="button" onclick="switchTab('calc')" class="nav-btn" aria-label="คำนวณ"><i class="fa-solid fa-calculator"></i><span class="nav-lbl">คำนวณ</span></button>
-    <button id="tabStock" type="button" onclick="switchTab('stock')" class="nav-btn" aria-label="สต็อก"><i class="fa-solid fa-warehouse"></i><span class="nav-lbl">สต็อก</span></button>
+    <button id="tabCalc" type="button" style="--c:#d97706;--t:#fef3c7;color:#d97706" onclick="switchTab('calc')" class="nav-btn" aria-label="คำนวณ"><i class="fa-solid fa-calculator"></i><span class="nav-lbl">คำนวณ</span></button>
+    <button id="tabStock" type="button" style="--c:#059669;--t:#d1fae5;color:#059669" onclick="switchTab('stock')" class="nav-btn" aria-label="สต็อก"><i class="fa-solid fa-warehouse"></i><span class="nav-lbl">สต็อก</span></button>
     <button id="tabPlan" type="button" onclick="switchTab('plan')" class="nav-btn nav-active nav-home" aria-label="แผนงาน"><i class="fa-solid fa-list-check"></i><span class="nav-lbl">แผน</span></button>
-    <button id="tabHistory" type="button" onclick="switchTab('history')" class="nav-btn" aria-label="ประวัติ"><i class="fa-solid fa-clock-rotate-left"></i><span class="nav-lbl">ประวัติ</span></button>
-    <button id="tabCut" type="button" onclick="switchTab('cut')" class="nav-btn" aria-label="รายการตัด"><i class="fa-solid fa-scissors"></i><span class="nav-lbl">รายการตัด</span></button>
+    <button id="tabHistory" type="button" style="--c:#7c3aed;--t:#ede9fe;color:#7c3aed" onclick="switchTab('history')" class="nav-btn" aria-label="ประวัติ"><i class="fa-solid fa-clock-rotate-left"></i><span class="nav-lbl">ประวัติ</span></button>
+    <button id="tabCut" type="button" style="--c:#0284c7;--t:#e0f2fe;color:#0284c7" onclick="switchTab('cut')" class="nav-btn" aria-label="รายการตัด"><i class="fa-solid fa-scissors"></i><span class="nav-lbl">รายการตัด</span></button>
   </div>
 </nav>
 
