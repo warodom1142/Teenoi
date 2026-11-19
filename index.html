@@ -1643,7 +1643,7 @@ async function addPlanRow(section) {
   const code = await pickPlanCode();
   if (!code) return;
   let pump = '';
-  if (!isCustomCode(code)) { pump = await pickPumpFor(code, '', planDraft[i].section); if (pump === null) return; }
+  if (!isCustomCode(code)) { pump = await pickPumpFor(code, '', section || ''); if (pump === null) return; }
   planDraft.push({ id: newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
