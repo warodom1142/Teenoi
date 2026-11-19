@@ -1649,7 +1649,10 @@ async function addPlanRow(section) {
   // งานเก่าในประวัติอาจยังไม่ได้ระบุปั๊ม จึงรองรับแถวที่ไม่มีปั๊มด้วย (หลังจากหาปั๊มที่ตรงก่อน)
   const hist = historyJobs.filter(h => !h.cancelled && h.jobCode === code && monthKeyNum(h.month) === monthKeyNum(planMonth)
     && h.planRowId && !usedIds.has(String(h.planRowId)));
-  const reuse = hist.find(h => (h.pump || '') === (pump || '')) || hist.find(h => !h.pump);
+  // ปั๊มเก่าในประวัติอาจเป็นชื่อที่ไม่อยู่ใน BOM (เช่น "ปั๊มทั่วไป / ไม่ระบุ") ให้ถือว่าไม่ได้ระบุปั๊ม
+  const bomPumps = bomEntriesOf(code).map(e => e.pump);
+  const noPump = h => !h.pump || !bomPumps.includes(h.pump);
+  const reuse = hist.find(h => (h.pump || '') === (pump || '')) || hist.find(noPump);
   planDraft.push({ id: reuse ? String(reuse.planRowId) : newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
   renderPlan();
 }
