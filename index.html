@@ -2348,7 +2348,6 @@ function renderHistoryList() {
     const badge = j.cancelled ? '<span class="ml-1 text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">ยกเลิกแล้ว</span>' : '';
     const monthBadge = j.month ? `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">เดือน ${esc(j.month)}</span>` : '';
     const missing = !j.cancelled ? getMissingMetals(j) : [];
-    const missingBadge = missing.length ? `<div class="mt-1 text-[11px] font-extrabold text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ตัด: ${missing.map(esc).join(', ')}</div>` : '';
     const notePreview = j.note ? `<div class="text-[11px] font-semibold text-amber-700 truncate mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${esc(j.note)}</div>` : '';
     const usr = (j.by || j.user) ? ` · โดย ${esc(j.by || j.user)}` : '';
     const pn = planNoteOf(j);
@@ -2363,7 +2362,6 @@ function renderHistoryList() {
       <div class="text-xs font-bold ${subTextCls} truncate">${esc(adj ? j.pump : j.jobName)}</div>
       <div class="text-[11px] font-semibold ${detailTextCls}">${adj ? '' : `ปั๊ม: ${esc(j.pump)} · ผลิต ${formatNum(Number(j.qty) || 0)} ตัว · `}${j.items.length} รายการเหล็ก${usr}</div>
       ${notePreview}
-      ${missingBadge}
     </button>`;
   }).join('');
 }
