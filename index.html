@@ -1462,7 +1462,7 @@ function renderPlan() {
   sections.forEach(sec => {
     const sum = sec.items.reduce((a, x) => a + (x.r.cancelled ? 0 : (Number(x.r.qty) || 0)), 0);
     const sumU = sec.items.reduce((a, x) => a + (x.r.cancelled ? 0 : (Number(x.r.qty) || 0) * unitPer(x.r)), 0);
-    const cols = planEditing ? ['6%', '16%', '22%', '12%', '12%', '32%'] : ['8%', '27%', '25%', '19%', '21%'];
+    const cols = planEditing ? ['6%', '16%', '22%', '12%', '12%', '32%'] : ['7%', '27%', '34%', '18%', '14%'];
     const head = planEditing ? ['NO.', 'CODE', 'ชื่องาน', 'ตัว', '@ยูนิต', ''] : ['NO.', 'CODE', 'ชื่องาน', 'ตัว', 'คืบหน้า'];
     html += `<div><div class="text-xs font-extrabold text-blue-900 mb-1">${esc(sec.name || 'งาน')}</div>
       <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
