@@ -1718,9 +1718,11 @@ function openCancelledPlanHistory(i) {
   const jobs = historyJobs.filter(h => !h.cancelled && h.jobCode === String(r.code) && String(h.month || '') === String(planMonth)
     && (h.planRowId ? String(h.planRowId) === String(r.id || '') : sameCodeRows === 1)
     && (!r.pump || h.pump === r.pump || !pumps.has(h.pump)));
-  if (!jobs.length) return uiAlert(`ยังไม่มีประวัติการตัดของ ${r.code}`);
+  // ไม่เจอแบบตรงรายแถว ให้ค้นจากรหัส+เดือนแทน (ดูในหน้าประวัติได้เอง)
+  const byCode = jobs.length ? jobs : historyJobs.filter(h => !h.cancelled && h.jobCode === String(r.code) && String(h.month || '') === String(planMonth));
+  if (!byCode.length) return uiAlert(`ยังไม่มีประวัติการตัดของ ${r.code}`);
   switchTab('history');
-  if (jobs.length === 1) return openHistoryJob(jobs[0].id);
+  if (byCode.length === 1) return openHistoryJob(byCode[0].id);
   setHistoryFilter('all');
   document.getElementById('historySearch').value = String(r.code);
   renderHistoryList();
