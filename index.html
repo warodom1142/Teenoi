@@ -2249,6 +2249,9 @@ function openHistoryJob(id) {
     ? `<div class="p-3 bg-amber-100 border-2 border-amber-400 rounded-2xl text-xs font-extrabold text-amber-900"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ได้ตัด: ${missing.map(esc).join(', ')}<div class="font-bold mt-0.5">ถ้าตัดเพิ่มวันหลัง เลือกงานนี้ซ้ำ (โค้ด+ปั๊ม+เดือนเดิม) ระบบจะรวมเข้าในการ์ดนี้ให้อัตโนมัติ</div></div>`
     : '';
 
+  const pCancelBanner = (!j.cancelled && !adj && planRowCancelledOf(j))
+    ? `<div class="hist-plan-cancel p-3 border-2 border-slate-400 rounded-2xl text-xs font-extrabold text-slate-700"><i class="fa-solid fa-ban"></i> ยกเลิกในแผนงานแล้ว · รายการตัดนี้ยังอยู่ ไม่คืนสต็อก (ต้องกด "ยกเลิก" ที่รายการตัด ถ้าต้องการคืนสต็อก)</div>`
+    : '';
   const banner = j.cancelled
     ? `<div class="p-3 bg-rose-100 border-2 border-rose-400 rounded-2xl text-xs font-extrabold text-rose-800"><i class="fa-solid fa-ban"></i> ยกเลิกแล้ว · โดย ${esc(j.cancelledBy || '-')} · ${esc(j.cancelledAt || '')}<div class="font-bold mt-0.5">สต็อกถูกคืนแล้วทั้งหมด (รวมทุกวันที่ตัดของงานนี้)</div></div>`
     : `${editBtnHtml(j)}<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
@@ -2278,7 +2281,7 @@ function openHistoryJob(id) {
 
   const lineBtn = adj ? '' : `<button type="button" data-id="${esc(j.id)}" onclick="shareHistoryLine(this.dataset.id)" class="w-full py-2.5 mb-2 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-sm rounded-xl"><i class="fa-brands fa-line"></i> ส่งรูปผลการตัดเข้าไลน์</button>`;
 
-  box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + missingBanner + banner + lineBtn + cards;
+  box.innerHTML = `<button type="button" onclick="showHistoryList()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold"><i class="fa-solid fa-arrow-left"></i> กลับ</button>` + head + pCancelBanner + missingBanner + banner + lineBtn + cards;
   document.getElementById('historyListView').classList.add('hidden');
   box.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
