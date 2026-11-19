@@ -482,7 +482,7 @@ function getMissingMetals(j) {
 // ป้ายปั๊มในคอลัมน์รหัสของแผนงาน (งานลูกค้าไม่แสดง)
 function planPumpBadge(r) {
   if (isCustomCode(r.code) || !r.pump) return '';
-  return `<div class="mt-0.5 inline-block px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`;
+  return `<div class="mt-0.5 block w-fit mx-auto px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-extrabold">${esc(r.pump)}</div>`;
 }
 function planNoteOf(j) {
   if (!j || j.jobCode === 'ADJUST') return '';
