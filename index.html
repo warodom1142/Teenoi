@@ -2375,10 +2375,21 @@ function openHistoryJob(id) {
   const box = document.getElementById('historyDetail');
   const who = `<div>ผู้ตัดล่าสุด: ${esc(j.by || j.user || '-')}</div>`;
   const monthLine = (!adj && j.month) ? `<div>เดือนงาน: ${esc(monthLabel(j.month))}</div>` : '';
+  const tRows = [
+    ['วันที่ตัดล่าสุด', esc(j.time)],
+    ['ผู้ตัดล่าสุด', esc(j.by || j.user || '-')],
+    ['โค้ด', esc(j.jobCode)],
+    ['ชื่องาน', esc(j.jobName)],
+    ['ปั๊ม', esc(j.pump)],
+    ['จำนวนผลิต', `${formatNum(Number(j.qty) || 0)} ตัว`],
+    ...(j.month ? [['เดือนงาน', esc(monthLabel(j.month))]] : []),
+    ...(planNoteOf(j) ? [['โน้ตแผน', esc(planNoteOf(j))]] : []),
+    ...(j.note ? [['โน้ต', esc(j.note)]] : [])
+  ].map(([k, v]) => `<tr><th class="text-left align-top py-1.5 px-2 border border-emerald-200 bg-emerald-100 w-[36%] font-extrabold">${k}</th><td class="py-1.5 px-2 border border-emerald-200 align-top">${v}</td></tr>`).join('');
+  const tableHead = `<div class="rounded-2xl overflow-hidden border-2 border-emerald-300 bg-emerald-50"><table class="w-full text-sm font-bold text-emerald-950 border-collapse">${tRows}</table></div>`;
   const head = adj ? `<div class="p-3 bg-sky-50 border border-sky-300 rounded-2xl space-y-1 text-sm font-bold text-sky-950">
       <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>ประเภท: ปรับสต็อก (ไม่ใช่งานผลิต)</div><div>หมายเหตุ: ${esc(j.pump)}</div></div>`
-    : `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1 text-sm font-bold text-emerald-950">
-      <div>วันที่ตัดล่าสุด: ${esc(j.time)}</div>${who}<div>โค้ด: ${esc(j.jobCode)}</div>${planNoteOf(j) ? `<div class="inline-block bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 text-amber-800">📝 ${esc(planNoteOf(j))}</div>` : ''}<div>ชื่องาน: ${esc(j.jobName)}</div><div>ปั๊ม: ${esc(j.pump)}</div><div>จำนวนผลิต: ${formatNum(Number(j.qty) || 0)} ตัว</div>${monthLine}${j.note ? `<div>โน้ต: ${esc(j.note)}</div>` : ''}</div>`;
+    : tableHead;
 
   const missing = !adj && !j.cancelled ? getMissingMetals(j) : [];
 
