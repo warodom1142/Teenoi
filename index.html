@@ -1772,7 +1772,7 @@ function openPlanImport() {
         });
       }
       else {
-        rowsOut = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, note: r.note || '' }));
+        rowsOut = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, qty: r.qty, note: r.note || '', cancelled: !!r.cancelled }));
         // ทุกรายการเป็นงานแยกกันเสมอ แม้รหัส จำนวน และหมวดจะเหมือนแถวเดิม จึงเพิ่มเป็นแถวใหม่ที่มีรหัสของตัวเองทุกครั้ง
         items.forEach(r => rowsOut.push({ id: newPlanId(), section: r.section, code: r.code, qty: r.qty }));
       }
