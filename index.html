@@ -212,7 +212,11 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
 
   <div id="adjustBox" class="hidden p-3 bg-amber-50 border-2 border-amber-300 rounded-xl space-y-2">
     <div class="text-xs font-extrabold text-amber-900"><i class="fa-solid fa-screwdriver-wrench"></i> โหมดปรับสต็อก (ไม่ใช่งานผลิต)</div>
-    <div class="text-[11px] font-bold text-amber-800">เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)</div>
+    <div class="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border border-amber-300">
+      <button id="adjStickBtn" type="button" onclick="setAdjStick(true)" class="py-2 rounded-lg font-extrabold text-xs">เหล็กเข้า (กรอกเป็นเส้น)</button>
+      <button id="adjCmBtn" type="button" onclick="setAdjStick(false)" class="py-2 rounded-lg font-extrabold text-xs">แก้สต็อกไม่ตรง (กรอก ซม.)</button>
+    </div>
+    <div id="adjHint" class="text-[11px] font-bold text-amber-800">เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณ 600 ซม. ให้เอง</div>
     <input type="text" id="adjustNote" placeholder="หมายเหตุ เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง (จำเป็น)" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
   </div>
 
@@ -978,6 +982,7 @@ function renderMetalCalcRows(metals) {
     c.appendChild(card);
   });
   calculateAllRows();
+  if (currentActiveJob && currentActiveJob.code === 'ADJUST') setAdjStick(adjStickMode);
   refreshStockBadges();   // ใช้สต็อกที่โหลดไว้แล้ว ไม่ดึงใหม่ทุกครั้งที่วาดการ์ด
 }
 
@@ -1183,7 +1188,7 @@ async function commitStock() {
     const s = card.querySelector('.scrap-input').value.trim();
     if (w === '' && r === '' && s === '') return;
     items.push({ code: METAL_CODE[card.dataset.metal], name: card.dataset.metal, bom: parseFloat(card.dataset.bom) || 0,
-      withdraw: parseFloat(w) || 0, ret: parseFloat(r) || 0, scrap: parseFloat(s) || 0 });
+      withdraw: parseFloat(w) || 0, ret: (currentActiveJob.code === 'ADJUST' && adjStickMode ? STICK_CM : 1) * (parseFloat(r) || 0), scrap: parseFloat(s) || 0 });
   });
   if (items.length === 0) return uiAlert('ยังไม่ได้กรอกเบิก/คืน/เศษทิ้ง');
   const isAdj = currentActiveJob.code === 'ADJUST';
@@ -1220,7 +1225,7 @@ async function commitStock() {
       clearJobPanel();
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
-      doneInfo = isAdj ? 'ปรับสต็อกเรียบร้อย' : `ตัดสต็อกเรียบร้อย\nโค้ดงานที่ตัด: ${jobSnap.code}\n${jobSnap.name || ''}`;
+      doneInfo = isAdj ? ('ปรับสต็อกเรียบร้อย' + adjSticksText(items)) : `ตัดสต็อกเรียบร้อย\nโค้ดงานที่ตัด: ${jobSnap.code}\n${jobSnap.name || ''}`;
       if (!isAdj) {
         cutNotice = buildCutNotice({ jobCode: jobSnap.code, jobName: jobSnap.name, pump: jobSnap.pump, qty, month: sendMonth, items,
           before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
@@ -3029,8 +3034,27 @@ function makeAdjustJob() {
   Object.keys(METAL_CODE).forEach(k => metals[k] = 0);
   return { code: 'ADJUST', name: 'ปรับสต็อก', pump: '-', metals: metals };
 }
+const STICK_CM = 600;   // ความยาวมาตรฐานของเหล็ก 1 เส้น (ซม.)
+let adjStickMode = true;
+function setAdjStick(on) {
+  adjStickMode = on;
+  const sb = document.getElementById('adjStickBtn'), cb = document.getElementById('adjCmBtn');
+  if (sb) sb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'bg-amber-500 text-white shadow' : 'text-amber-900'}`;
+  if (cb) cb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'text-amber-900' : 'bg-amber-500 text-white shadow'}`;
+  const hint = document.getElementById('adjHint');
+  if (hint) hint.textContent = on ? 'เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณ 600 ซม. ให้เอง' : 'เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)';
+  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+    const lbl = card.querySelector('.return-input')?.closest('div.bg-white')?.firstElementChild;
+    if (lbl) lbl.textContent = on ? 'เข้า (เส้น)' : 'คืน (ซม.)';
+  });
+}
+function adjSticksText(items) {
+  const sum = (items || []).reduce((a, it) => a + (Number(it.ret) || 0), 0);
+  return adjStickMode && sum > 0 ? `\nเหล็กเข้า ${formatNum(sum / STICK_CM)} เส้น (${formatNum(sum)} ซม.)` : '';
+}
 function setAdjustMode(on) {
   document.body.classList.toggle('adjust-mode', on);
+  if (on) setAdjStick(true);
   document.getElementById('adjustBox').classList.toggle('hidden', !on);
   document.getElementById('qtyBox').classList.toggle('hidden', on);
   document.getElementById('jobNoteBox').classList.toggle('hidden', on);
