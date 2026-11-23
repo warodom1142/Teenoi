@@ -216,7 +216,7 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
       <button id="adjStickBtn" type="button" onclick="setAdjStick(true)" class="py-2 rounded-lg font-extrabold text-xs">เหล็กเข้า (กรอกเป็นเส้น)</button>
       <button id="adjCmBtn" type="button" onclick="setAdjStick(false)" class="py-2 rounded-lg font-extrabold text-xs">แก้สต็อกไม่ตรง (กรอก ซม.)</button>
     </div>
-    <div id="adjHint" class="text-[11px] font-bold text-amber-800">เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณ 600 ซม. ให้เอง</div>
+    <div id="adjHint" class="text-[11px] font-bold text-amber-800">เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณความยาวให้เอง (600 ซม. / ML 240 ซม.)</div>
     <input type="text" id="adjustNote" placeholder="หมายเหตุ เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง (จำเป็น)" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
   </div>
 
@@ -1196,7 +1196,7 @@ async function commitStock() {
     const s = card.querySelector('.scrap-input').value.trim();
     if (w === '' && r === '' && s === '') return;
     items.push({ code: METAL_CODE[card.dataset.metal], name: card.dataset.metal, bom: parseFloat(card.dataset.bom) || 0,
-      withdraw: parseFloat(w) || 0, ret: (currentActiveJob.code === 'ADJUST' && adjStickMode ? STICK_CM : 1) * (parseFloat(r) || 0), scrap: parseFloat(s) || 0 });
+      withdraw: parseFloat(w) || 0, ret: (currentActiveJob.code === 'ADJUST' && adjStickMode ? stickLenOf(METAL_CODE[card.dataset.metal]) : 1) * (parseFloat(r) || 0), scrap: parseFloat(s) || 0 });
   });
   if (items.length === 0) return uiAlert('ยังไม่ได้กรอกเบิก/คืน/เศษทิ้ง');
   const isAdj = currentActiveJob.code === 'ADJUST';
@@ -3043,6 +3043,8 @@ function makeAdjustJob() {
   return { code: 'ADJUST', name: 'ปรับสต็อก', pump: '-', metals: metals };
 }
 const STICK_CM = 600;   // ความยาวมาตรฐานของเหล็ก 1 เส้น (ซม.)
+const STICK_LEN_BY_CODE = { '1524262': 240, '1524263': 240 };   // ML 2x240cm / ML 10x240cm ยาว 240 ซม.
+function stickLenOf(code) { return STICK_LEN_BY_CODE[String(code)] || STICK_CM; }
 let adjStickMode = true;
 function setAdjStick(on) {
   adjStickMode = on;
@@ -3050,7 +3052,7 @@ function setAdjStick(on) {
   if (sb) sb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'bg-amber-500 text-white shadow' : 'text-amber-900'}`;
   if (cb) cb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'text-amber-900' : 'bg-amber-500 text-white shadow'}`;
   const hint = document.getElementById('adjHint');
-  if (hint) hint.textContent = on ? 'เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณ 600 ซม. ให้เอง' : 'เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)';
+  if (hint) hint.textContent = on ? 'เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณความยาวให้เอง (600 ซม. / ML 240 ซม.)' : 'เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)';
   document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
     // โหมดเหล็กเข้า: เหลือแค่ช่องจำนวนเส้น (ซ่อน Partlist/ใช้จริง/BOM/เบิก/เศษ/แถบสถานะ)
     const rw = card.querySelector('.return-input')?.closest('div.bg-white');
@@ -3071,8 +3073,10 @@ function setAdjStick(on) {
   });
 }
 function adjSticksText(items) {
-  const sum = (items || []).reduce((a, it) => a + (Number(it.ret) || 0), 0);
-  return adjStickMode && sum > 0 ? `\nเหล็กเข้า ${formatNum(sum / STICK_CM)} เส้น (${formatNum(sum)} ซม.)` : '';
+  if (!adjStickMode) return '';
+  const lines = (items || []).filter(it => (Number(it.ret) || 0) > 0)
+    .map(it => `\n• ${it.name} ${formatNum((Number(it.ret) || 0) / stickLenOf(it.code))} เส้น`);
+  return lines.length ? '\nเหล็กเข้า' + lines.join('') : '';
 }
 function setAdjustMode(on) {
   document.body.classList.toggle('adjust-mode', on);
