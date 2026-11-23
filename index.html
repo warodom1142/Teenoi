@@ -698,10 +698,13 @@ function switchTab(tab) {
   if (tab === 'stock') { loadStock(); loadSummary(); }
   if (tab === 'plan' && !planEditing) { loadPlan(); loadUnits(); loadHistory(); }
   if (tab === 'history') {
-    historyFilter = 'done';   // every time we enter the history page, start on "เสร็จ"
+    const keepId = historyOpenId;   // ถ้าเปิดดูรายการค้างไว้ ให้กลับไปที่รายการนั้น
+    if (!keepId) historyFilter = 'done';   // เข้าหน้าประวัติใหม่ เริ่มที่แท็บ "เสร็จ"
     if (!historyDateInited) { document.getElementById('historyDateFilter').value = todayStr(); historyDateInited = true; }
     initHistoryMonthFilter();
+    const keepOpen = keepId && historyJobs.some(x => String(x.id) === String(keepId));
     showHistoryList(); renderHistoryList(); loadHistory();
+    if (keepOpen) openHistoryJob(keepId);
   }
   if (tab === 'cut' && !cutLoaded) loadCutData();
 }
@@ -2376,11 +2379,13 @@ function renderHistoryList() {
   }).join('');
 }
 
-function showHistoryList() { document.getElementById('historyDetail').classList.add('hidden'); document.getElementById('historyListView').classList.remove('hidden'); }
+let historyOpenId = null;   // รายการที่เปิดดูอยู่ (ใช้เปิดกลับคืนเมื่อกลับมาจากหน้าอื่น)
+function showHistoryList() { historyOpenId = null; document.getElementById('historyDetail').classList.add('hidden'); document.getElementById('historyListView').classList.remove('hidden'); }
 
 function openHistoryJob(id) {
   const j = historyJobs.find(x => String(x.id) === String(id));
   if (!j) return;
+  historyOpenId = String(id);
   const adj = j.jobCode === 'ADJUST';
   const box = document.getElementById('historyDetail');
   const who = `<div>ผู้ตัดล่าสุด: ${esc(j.by || j.user || '-')}</div>`;
