@@ -1486,7 +1486,7 @@ function renderPlan() {
     const sumU = sec.items.reduce((a, x) => a + (x.r.cancelled ? 0 : (Number(x.r.qty) || 0) * unitPer(x.r)), 0);
     const cols = planEditing ? ['6%', '16%', '22%', '12%', '12%', '32%'] : ['7%', '20%', '49%', '12%', '12%'];
     const head = planEditing ? ['NO.', 'CODE', 'ชื่องาน', 'ตัว', '@ยูนิต', ''] : ['NO.', 'CODE', 'ชื่องาน', 'ตัว', 'คืบหน้า'];
-    html += `<div><button type="button" data-sec="${esc(sec.name || 'งาน')}" onclick="togglePlanSection(this.dataset.sec)" class="w-full flex items-center justify-between text-xs font-extrabold text-blue-900 mb-1 px-1"><span>${esc(sec.name || 'งาน')}</span><span class="text-slate-500">${planCollapsed.has(sec.name || 'งาน') ? '▸' : '▾'} ${formatNum(sum)} ตัว</span></button>
+    html += `<div><button type="button" data-sec="${esc(sec.name || 'งาน')}" onclick="togglePlanSection(this.dataset.sec)" class="w-full flex items-center justify-between gap-2 px-3 py-2 mb-1.5 rounded-xl bg-blue-50 border-2 border-blue-300 text-sm font-extrabold text-blue-900 active:bg-blue-100"><span>${esc(sec.name || 'งาน')}</span><span class="inline-flex items-center gap-1 text-xs text-blue-700">${planCollapsed.has(sec.name || 'งาน') ? 'กางดู' : 'พับเก็บ'} <i class="fa-solid ${planCollapsed.has(sec.name || 'งาน') ? 'fa-chevron-down' : 'fa-chevron-up'}"></i></span></button>
       <div class="overflow-hidden rounded-xl border border-slate-300 bg-white ${planCollapsed.has(sec.name || 'งาน') ? 'hidden' : ''}"><table class="plan-table">
       <colgroup>${cols.map(c => `<col style="width:${c}">`).join('')}</colgroup>
       <thead><tr>${head.map(t => `<th>${t}</th>`).join('')}</tr></thead><tbody>`;
@@ -1514,7 +1514,7 @@ function renderPlan() {
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-black text-[21px] text-blue-900 ${r.cancelled ? 'cx' : ''}">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
-    html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1">รวม <span data-cnt="sec-${esc(sec.name)}-sum" data-to="${sum}">${formatNum(sum)}</span> ตัว · <span class="text-emerald-700"><span data-cnt="sec-${esc(sec.name)}-units" data-to="${sumU}">${formatNum(sumU)}</span> ยูนิต</span></div>`;
+    html += `</tbody></table></div><div class="text-right text-sm font-extrabold text-slate-700 mt-1 ${planCollapsed.has(sec.name || 'งาน') ? 'hidden' : ''}">รวม <span data-cnt="sec-${esc(sec.name)}-sum" data-to="${sum}">${formatNum(sum)}</span> ตัว · <span class="text-emerald-700"><span data-cnt="sec-${esc(sec.name)}-units" data-to="${sumU}">${formatNum(sumU)}</span> ยูนิต</span></div>`;
     if (planEditing) html += `<button type="button" data-s="${esc(sec.name)}" onclick="addPlanRow(this.dataset.s)" class="mt-1 w-full py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i> เพิ่มงานในหมวดนี้</button>`;
     html += '</div>';
   });
@@ -2634,7 +2634,6 @@ async function commitEdit() {
   // เก็บ reference ไว้ก่อน เพราะ dialog จะถูกลบออกจากหน้าเมื่อปิด (getElementById จะคืน null)
   const keepChk = keep.querySelector('#editKeepDate');
   if (!(await uiDialog('ยืนยันการแก้ไขรายการ?\nระบบจะคืนสต็อกของรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว', true, keep))) return;
-  if (!(await askPin('ใส่รหัสยืนยันการแก้ไขรายการ'))) return;
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังแก้ไขรายการและปรับสต็อก');
