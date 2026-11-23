@@ -2565,6 +2565,7 @@ function editBtnHtml(j) {
 async function editJob(id) {
   const card = historyJobs.find(x => String(x.id) === String(id));
   if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
+  if (!(await askPin('กรอกรหัสก่อนแก้ไขรายการ'))) return;
   const entry = bomEntriesOf(card.jobCode).find(e => e.pump === card.pump);
   if (!entry) return uiAlert(`ไม่พบงาน ${card.jobCode} (${card.pump}) ใน BOM จึงแก้ไขไม่ได้`);
   if (!(await uiDialog('⚠️ กำลังแก้ไขรายการที่ตัดสต็อกไปแล้ว', true))) return;
