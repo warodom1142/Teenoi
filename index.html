@@ -173,6 +173,11 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
 <!-- คำนวณ -->
 <div id="pageCalc" class="page space-y-3">
   <div class="text-center py-0.5"><span class="inline-block border-2 border-red-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">คำนวณเหล็กตามงาน</span></div>
+  <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+    <button id="calcTab1" type="button" onclick="setCalcTab(1)" class="py-2.5 rounded-xl font-extrabold text-sm bg-white text-slate-900 shadow-sm"><i class="fa-solid fa-calculator"></i> 1. คำนวณ</button>
+    <button id="calcTab2" type="button" onclick="setCalcTab(2)" class="py-2.5 rounded-xl font-extrabold text-sm text-slate-500"><i class="fa-solid fa-scale-balanced"></i> 2. แบ่งสัดส่วน</button>
+  </div>
+  <div id="calcPane1" class="space-y-3">
 
   <div id="editModeBanner" class="hidden mb-2 p-3 rounded-2xl bg-amber-400 border-2 border-amber-600 ring-4 ring-amber-200 text-amber-950 shadow-lg text-center">
     <div class="text-lg font-black"><i class="fa-solid fa-pen-to-square"></i> กำลังแก้ไขรายการเดิม</div>
@@ -222,9 +227,9 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
   <button type="button" id="btnCommit" onclick="commitStock()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก</button>
   <button type="button" onclick="resetCalcForm()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวเลขทั้งหมด</button>
 
-  <div class="border-t border-slate-200 pt-3">
-    <button type="button" onclick="toggleSplit()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-scale-balanced"></i> คำนวณแบ่งสัดส่วนหลายงาน (ตัดรวมทีเดียว)</button>
-    <div id="splitBox" class="hidden mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
+  </div>
+  <div id="calcPane2" class="hidden space-y-3">
+    <div id="splitBox" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
       <div class="text-xs font-extrabold text-emerald-900">1. รายการงานที่ตัดรวมกัน</div>
       <datalist id="splitCodeList"></datalist>
       <div id="splitRows" class="space-y-2"></div>
@@ -1939,10 +1944,15 @@ function openPlanImport() {
 // ===== คำนวณแบ่งสัดส่วนหลายงาน (ตัดรวมทีเดียว) =====
 // สัดส่วนของแต่ละโค้ด = จำนวนชิ้นของโค้ดนั้น ÷ จำนวนชิ้นรวมทั้งหมด แล้วแบ่ง เบิก/คืน/ทิ้ง ตามสัดส่วนนั้น
 let splitRows = [{ code: '', pcs: '' }];
-function toggleSplit() {
-  const box = document.getElementById('splitBox');
-  box.classList.toggle('hidden');
-  if (!box.classList.contains('hidden')) renderSplitRows();
+function setCalcTab(n) {
+  const on = n === 2;
+  document.getElementById('calcPane1').classList.toggle('hidden', on);
+  document.getElementById('calcPane2').classList.toggle('hidden', !on);
+  const a = document.getElementById('calcTab1'), b = document.getElementById('calcTab2');
+  const act = 'bg-white text-slate-900 shadow-sm', idle = 'text-slate-500';
+  a.className = `py-2.5 rounded-xl font-extrabold text-sm ${on ? idle : act}`;
+  b.className = `py-2.5 rounded-xl font-extrabold text-sm ${on ? act : idle}`;
+  if (on) renderSplitRows();
 }
 function splitBomEntry(code) { return bomDatabase.find(x => x.code === String(code).trim() && x.code !== 'ADJUST'); }
 function splitCmEach(entry) { return Object.values(entry.metals || {}).reduce((a, v) => a + (Number(v) || 0), 0); }
