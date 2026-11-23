@@ -55,7 +55,7 @@ function doGet(e) {
   if (e.parameter.token !== TOKEN) return out_({ ok: false, error: 'unauthorized' });
   const ss = SpreadsheetApp.getActive();
   if (e.parameter.action === 'history') return out_(getHistory_(ss));
-  if (e.parameter.action === 'plan') return out_(getPlan_(ss));
+  if (e.parameter.action === 'plan') { const pl = getPlan_(ss); pl.collapsed = getPlanCollapsed_(); return out_(pl); }
   if (e.parameter.action === 'units') return out_(getUnits_(ss));
   if (e.parameter.action === 'summary') return out_(getSummary_(ss));
   const rows = ss.getSheetByName(STOCK_SHEET).getDataRange().getValues();
@@ -127,6 +127,7 @@ function doPost(e) {
       if (d.token !== TOKEN) return out_({ ok: false, error: 'unauthorized' });
       if (d.action === 'notify') return notifyLineHandler_(d.text);   // เพิ่มบรรทัดนี้
       const ss = SpreadsheetApp.getActive();
+    if (d.action === 'planCollapsed') { PropertiesService.getScriptProperties().setProperty('planCollapsed', JSON.stringify(Array.isArray(d.collapsed) ? d.collapsed : [])); return out_({ ok: true }); }
     if (d.action === 'cancel') return cancel_(ss, d);
     if (d.action === 'edit') return edit_(ss, d);
     if (d.action === 'planSave') return planSave_(ss, d);
@@ -424,6 +425,9 @@ function ensurePlan_(ss) {
   return sh;
 }
 
+function getPlanCollapsed_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('planCollapsed') || '[]'); } catch (e) { return []; }
+}
 function getPlan_(ss) {
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();

@@ -1204,6 +1204,7 @@ async function commitStock() {
 
   if (!submitId) submitId = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
   let cutNotice = null;
+  let doneInfo = null;
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังบันทึกการตัดสต็อก');
@@ -1219,6 +1220,7 @@ async function commitStock() {
       clearJobPanel();
       loadStock();
       toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
+      doneInfo = isAdj ? 'ปรับสต็อกเรียบร้อย' : `ตัดสต็อกเรียบร้อย\nโค้ดงานที่ตัด: ${jobSnap.code}\n${jobSnap.name || ''}`;
       if (!isAdj) {
         cutNotice = buildCutNotice({ jobCode: jobSnap.code, jobName: jobSnap.name, pump: jobSnap.pump, qty, month: sendMonth, items,
           before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
@@ -1231,6 +1233,7 @@ async function commitStock() {
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   if (cutNotice) notifyLine(cutNotice);   // แจ้งเตือนไลน์อัตโนมัติ (ไม่รอ ไม่บล็อกการใช้งาน)
+  if (doneInfo) { await uiDialog(doneInfo, false); switchTab('plan'); }   // ป๊อปอัพยืนยัน แล้วกลับหน้าแผน
 }
 
 // ===== แผนงาน =====
@@ -1251,6 +1254,16 @@ const UNIT_SEED = {
 };
 let unitMap = {};
 let planAll = [], planMonth = getSavedPlanMonth(), planEditing = false, planDraft = [], planLoaded = false;
+// หมวดงานที่พับไว้ (ใช้ร่วมกันทุกเครื่องผ่านเซิร์ฟเวอร์ และจำไว้ในเครื่องก่อนโหลดเสร็จ)
+function loadPlanCollapsed() { try { return new Set(JSON.parse(localStorage.getItem('bomcal_plan_collapsed') || '[]')); } catch (e) { return new Set(); } }
+let planCollapsed = loadPlanCollapsed();
+function togglePlanSection(name) {
+  if (planCollapsed.has(name)) planCollapsed.delete(name); else planCollapsed.add(name);
+  const arr = [...planCollapsed];
+  try { localStorage.setItem('bomcal_plan_collapsed', JSON.stringify(arr)); } catch (e) {}
+  renderPlan();
+  postApi({ action: 'planCollapsed', collapsed: arr }).catch(() => {});
+}
 function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
 
 const loadUnits = () => sharedFetch('units', fetchUnits);
@@ -1384,6 +1397,7 @@ async function fetchPlan() {
     const j = await r.json();
     if (!j.ok) throw new Error(j.message || j.error);
     planAll = j.plan || []; planLoaded = true; cacheSet('plan', planAll);
+    if (Array.isArray(j.collapsed)) { planCollapsed = new Set(j.collapsed); try { localStorage.setItem('bomcal_plan_collapsed', JSON.stringify(j.collapsed)); } catch (e) {} }
   } catch (e) {
     document.getElementById('planStatus').textContent = 'โหลดแผนไม่สำเร็จ: ' + e.message;
     return;
@@ -1472,8 +1486,8 @@ function renderPlan() {
     const sumU = sec.items.reduce((a, x) => a + (x.r.cancelled ? 0 : (Number(x.r.qty) || 0) * unitPer(x.r)), 0);
     const cols = planEditing ? ['6%', '16%', '22%', '12%', '12%', '32%'] : ['7%', '20%', '49%', '12%', '12%'];
     const head = planEditing ? ['NO.', 'CODE', 'ชื่องาน', 'ตัว', '@ยูนิต', ''] : ['NO.', 'CODE', 'ชื่องาน', 'ตัว', 'คืบหน้า'];
-    html += `<div><div class="text-xs font-extrabold text-blue-900 mb-1">${esc(sec.name || 'งาน')}</div>
-      <div class="overflow-hidden rounded-xl border border-slate-300 bg-white"><table class="plan-table">
+    html += `<div><button type="button" data-sec="${esc(sec.name || 'งาน')}" onclick="togglePlanSection(this.dataset.sec)" class="w-full flex items-center justify-between text-xs font-extrabold text-blue-900 mb-1 px-1"><span>${esc(sec.name || 'งาน')}</span><span class="text-slate-500">${planCollapsed.has(sec.name || 'งาน') ? '▸' : '▾'} ${formatNum(sum)} ตัว</span></button>
+      <div class="overflow-hidden rounded-xl border border-slate-300 bg-white ${planCollapsed.has(sec.name || 'งาน') ? 'hidden' : ''}"><table class="plan-table">
       <colgroup>${cols.map(c => `<col style="width:${c}">`).join('')}</colgroup>
       <thead><tr>${head.map(t => `<th>${t}</th>`).join('')}</tr></thead><tbody>`;
     sec.items.forEach((x, n) => {
