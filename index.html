@@ -682,7 +682,15 @@ function parseCSV(text) {
 
 // ===== นำทาง / ค้นหา =====
 function openBomSheet() { loadHistory(); document.getElementById('pageBom').classList.remove('hidden'); document.body.style.overflow = 'hidden'; document.getElementById('pageBom').scrollTop = 0; }
-function openAdjustFromCalc() { openBomSheet(); document.getElementById('searchCode').value = 'ADJUST'; searchBom(); }
+// กดปรับสต็อก -> เข้าหน้าคำนวณโหมดปรับสต็อกทันที กรอกได้เลย (ไม่ต้องค้นหาจากรายการ BOM ก่อน)
+function openAdjustFromCalc() {
+  const adj = bomDatabase.find(x => x.code === 'ADJUST') || makeAdjustJob();
+  currentActiveJob = adj;
+  currentPlanRowId = '';
+  mergeTarget = null;
+  planQtyLock = false;
+  applyJobToCalculator(0, { target: null });
+}
 function closeBomSheet() { document.getElementById('pageBom').classList.add('hidden'); document.body.style.overflow = ''; }
 
 function switchTab(tab) {
