@@ -3044,8 +3044,22 @@ function setAdjStick(on) {
   const hint = document.getElementById('adjHint');
   if (hint) hint.textContent = on ? 'เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณ 600 ซม. ให้เอง' : 'เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)';
   document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
-    const lbl = card.querySelector('.return-input')?.closest('div.bg-white')?.firstElementChild;
-    if (lbl) lbl.textContent = on ? 'เข้า (เส้น)' : 'คืน (ซม.)';
+    // โหมดเหล็กเข้า: เหลือแค่ช่องจำนวนเส้น (ซ่อน Partlist/ใช้จริง/BOM/เบิก/เศษ/แถบสถานะ)
+    const rw = card.querySelector('.return-input')?.closest('div.bg-white');
+    if (rw) { rw.firstElementChild.textContent = on ? 'เข้า (เส้น)' : 'คืน (ซม.)'; rw.classList.toggle('col-span-2', on); }
+    const hideEls = [
+      card.querySelector('.partlist-val')?.parentElement,
+      card.querySelector('.used-val')?.parentElement,
+      card.querySelector('.withdraw-input')?.closest('div.bg-white'),
+      card.querySelector('.scrap-box'),
+      card.querySelector('.status-banner'),
+      card.querySelector('span.text-slate-500'),
+    ];
+    hideEls.forEach(el => el && el.classList.toggle('hidden', on));
+    if (on) {   // กันค่าเบิก/เศษที่กรอกค้างไว้ถูกส่งไปด้วย
+      const wi = card.querySelector('.withdraw-input'), sc = card.querySelector('.scrap-input');
+      if (wi) wi.value = ''; if (sc) sc.value = '';
+    }
   });
 }
 function adjSticksText(items) {
