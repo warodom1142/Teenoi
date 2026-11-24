@@ -868,9 +868,10 @@ function markCutCards(target) {
     set('.return-input', Number(it.ret) || 0);
     set('.scrap-input', Number(it.scrap) || 0);
     const used = card.querySelector('.used-val'); if (used) used.textContent = formatNum(Number(it.used) || 0);
-    const dt = card.querySelector('.diff-text'); if (dt) dt.textContent = 'ตัดไปแล้ว' + (target.time ? ' · ' + target.time : '') + ' (แก้ไขไม่ได้)';
-    const st = card.querySelector('.status-text'); if (st) st.textContent = '✅ ตัดแล้ว';
-    const bn = card.querySelector('.status-banner'); if (bn) bn.className = 'status-banner flex justify-between items-center px-3 py-2 border rounded-lg text-xs font-bold bg-emerald-100 border-emerald-300 text-emerald-800';
+    // ติ๊กถูก "ตัดแล้ว" และเวลาที่ตัด ย้ายมาอยู่ในกล่อง Partlist แทนค่าเดิม
+    const pl = card.querySelector('.partlist-val');
+    if (pl) pl.innerHTML = '<span class="text-emerald-700"><i class="fa-solid fa-circle-check"></i> ตัดแล้ว</span>' + (target.time ? `<div class="text-[10px] font-bold text-emerald-700 truncate">${esc(target.time)}</div>` : '');
+    const bn = card.querySelector('.status-banner'); if (bn) bn.classList.add('hidden');
   });
   const total = document.querySelectorAll('#metalCalcContainer .metal-card').length;
   document.getElementById('metalCountBadge').textContent = `เหลือ ${total - cnt} รายการ · ตัดแล้ว ${cnt}`;
