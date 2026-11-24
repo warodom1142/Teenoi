@@ -1094,7 +1094,10 @@ function refreshStockBadges() {
       badge.textContent = out ? `สต็อกหมด (คงเหลือ ${formatNum(q)} ซม.)` : `สต็อกคงเหลือ: ${formatNum(q)} ซม.`;
       if (!out && q <= LOW_STOCK_CM) { badge.className = 'stock-badge text-[11px] font-bold text-right low-stock rounded-lg px-2 py-1'; badge.textContent = `ใกล้หมด · คงเหลือ ${formatNum(q)} ซม.`; }
     } else { badge.className = 'stock-badge text-[11px] font-bold text-slate-500 text-right'; badge.textContent = 'สต็อก: ไม่พบรหัส'; }
-    if (card.classList.contains('cut-done')) badge.insertAdjacentHTML('afterbegin', '<span class="text-emerald-700 font-extrabold"><i class="fa-solid fa-circle-check"></i> ตัดแล้ว · </span>');
+    if (card.classList.contains('cut-done')) {   // ป้ายตัดแล้วชิดซ้ายตัวใหญ่ ส่วนสต็อกอยู่ชิดขวาบรรทัดเดียวกัน
+      badge.classList.add('flex', 'justify-between', 'items-center', 'gap-2');
+      badge.insertAdjacentHTML('afterbegin', '<span class="text-base font-black text-emerald-700 whitespace-nowrap"><i class="fa-solid fa-circle-check"></i> ตัดแล้ว</span>');
+    }
   });
 }
 
