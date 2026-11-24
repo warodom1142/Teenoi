@@ -841,13 +841,39 @@ async function applyJobToCalculator(planQty, pre) {
   if (target) {
     mergeTarget = target;
     if (Number(target.qty) > 0) document.getElementById('globalQty').value = Number(target.qty);
-    const done = new Set((target.items || []).map(i => i.name));
-    metals = {};
-    Object.keys(job.metals).forEach(m => { if (!done.has(m)) metals[m] = job.metals[m]; });
   }
   if (!mergeTarget && Number(planQty) > 0) document.getElementById('globalQty').value = Number(planQty);
   updateMergeInfo();
   renderMetalCalcRows(metals);
+  if (mergeTarget) markCutCards(mergeTarget);   // เหล็กที่ตัดไปแล้วแสดงเป็นการ์ดอ่านอย่างเดียว
+}
+
+// การ์ดเหล็กที่ตัดไปแล้วในงานเดิม: แสดงค่าที่ตัดไว้ ไม่ให้แก้ไข และไม่ถูกส่งไปตัดซ้ำ
+function markCutCards(target) {
+  const done = new Map((target.items || []).map(it => [it.name, it]));
+  let cnt = 0;
+  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+    const it = done.get(card.dataset.metal);
+    if (!it) return;
+    cnt++;
+    card.classList.add('cut-done', 'bg-emerald-50', 'border-emerald-300');
+    card.classList.remove('bg-slate-50', 'border-slate-200');
+    const set = (sel, v) => { const el = card.querySelector(sel); if (el) el.value = v; };
+    ['.withdraw-input', '.return-input', '.scrap-input'].forEach(sel => {
+      const el = card.querySelector(sel);
+      if (!el) return;
+      el.readOnly = true; el.disabled = true; el.removeAttribute('onclick'); el.classList.add('cursor-not-allowed', 'opacity-80');
+    });
+    set('.withdraw-input', Number(it.withdraw) || 0);
+    set('.return-input', Number(it.ret) || 0);
+    set('.scrap-input', Number(it.scrap) || 0);
+    const used = card.querySelector('.used-val'); if (used) used.textContent = formatNum(Number(it.used) || 0);
+    const dt = card.querySelector('.diff-text'); if (dt) dt.textContent = 'ตัดไปแล้ว' + (target.time ? ' · ' + target.time : '') + ' (แก้ไขไม่ได้)';
+    const st = card.querySelector('.status-text'); if (st) st.textContent = '✅ ตัดแล้ว';
+    const bn = card.querySelector('.status-banner'); if (bn) bn.className = 'status-banner flex justify-between items-center px-3 py-2 border rounded-lg text-xs font-bold bg-emerald-100 border-emerald-300 text-emerald-800';
+  });
+  const total = document.querySelectorAll('#metalCalcContainer .metal-card').length;
+  document.getElementById('metalCountBadge').textContent = `เหลือ ${total - cnt} รายการ · ตัดแล้ว ${cnt}`;
 }
 
 // ===== เครื่องคิดเลข =====
@@ -995,7 +1021,7 @@ function renderMetalCalcRows(metals) {
 }
 
 function calculateRow(card) {
-  if (!card) return;
+  if (!card || card.classList.contains('cut-done')) return;
   const bom = parseFloat(card.dataset.bom) || 0;
   const qv = document.getElementById('globalQty').value;
   const qty = (qv === '' || isNaN(qv)) ? 0 : parseFloat(qv);
@@ -1015,7 +1041,7 @@ function calculateRow(card) {
   } else { st.textContent = 'ยังไม่เบิก'; banner.className = base + 'bg-slate-200 border-slate-300 text-slate-700'; }
 }
 function calculateAllRows() { document.querySelectorAll('#metalCalcContainer .metal-card').forEach(calculateRow); }
-function resetCalcForm() { document.querySelectorAll('.withdraw-input,.return-input,.scrap-input').forEach(i => i.value = ''); calculateAllRows(); }
+function resetCalcForm() { document.querySelectorAll('#metalCalcContainer .metal-card:not(.cut-done) .withdraw-input, #metalCalcContainer .metal-card:not(.cut-done) .return-input, #metalCalcContainer .metal-card:not(.cut-done) .scrap-input').forEach(i => i.value = ''); calculateAllRows(); }
 
 // ===== สต็อก =====
 // โหลดซ้อน: ถ้ามีคำขอชนิดเดียวกันค้างอยู่ ให้ใช้คำขอเดิม ไม่ยิงซ้ำ
@@ -1190,7 +1216,7 @@ async function commitStock() {
   if (!currentActiveJob) return uiAlert('ยังไม่ได้เลือกงาน');
   const qty = parseFloat(document.getElementById('globalQty').value) || 0;
   const items = [];
-  document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
+  document.querySelectorAll('#metalCalcContainer .metal-card:not(.cut-done)').forEach(card => {
     const w = card.querySelector('.withdraw-input').value.trim();
     const r = card.querySelector('.return-input').value.trim();
     const s = card.querySelector('.scrap-input').value.trim();
