@@ -217,7 +217,7 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
       <button id="adjCmBtn" type="button" onclick="setAdjStick(false)" class="py-2 rounded-lg font-extrabold text-xs">✏️ แก้สต็อกไม่ตรง (กรอกเป็น ซม.)</button>
     </div>
     <div id="adjHint" class="text-[11px] font-bold text-amber-800">เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณความยาวให้เอง (600 ซม. / ML 240 ซม.)</div>
-    <input type="text" id="adjustNote" placeholder="หมายเหตุ เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง (จำเป็น)" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+    <input type="text" id="adjustNote" placeholder="หมายเหตุ (ไม่บังคับ) เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
   </div>
 
   <div class="space-y-2">
@@ -1201,7 +1201,6 @@ async function commitStock() {
   if (items.length === 0) return uiAlert('ยังไม่ได้กรอกเบิก/คืน/เศษทิ้ง');
   const isAdj = currentActiveJob.code === 'ADJUST';
   const adjNote = (document.getElementById('adjustNote').value || '').trim();
-  if (isAdj && !adjNote) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
 
   const jobNote = (document.getElementById('jobNoteInput').value || '').trim();
   const freshP = loadStock();   // ดึงสต็อกล่าสุดในพื้นหลัง ไม่ให้กล่องยืนยันช้า
@@ -2687,7 +2686,6 @@ async function editAdjust(card) {
 async function commitEdit() {
   const isAdjE = editTarget.jobCode === 'ADJUST';
   const adjNoteE = (document.getElementById('adjustNote').value || '').trim();
-  if (isAdjE && !adjNoteE) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
   const items = [];
   document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
     const w = parseFloat(card.querySelector('.withdraw-input').value) || 0;

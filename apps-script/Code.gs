@@ -298,7 +298,7 @@ function edit_(ss, d) {
   const rowId = Utilities.getUuid();
   const groupId = Utilities.getUuid();
   const logRows = [];
-  const pumpVal = (String(head[2]) === 'ADJUST' && String(d.note || '').trim()) ? String(d.note).trim().slice(0, 200) : head[4];
+  const pumpVal = String(head[2]) === 'ADJUST' ? (String(d.note || '').trim().slice(0, 200) || '-') : head[4];
   items.forEach(x => {
     const before = cur[x.code];
     const after = round_(before - x.used);
