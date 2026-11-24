@@ -1492,9 +1492,9 @@ function industryPay(u) {
 }
 function industryPayHtml() {
   if (!planLoaded) return '';
-  const rows = (planEditing ? planDraft : planRowsOf(planMonth)).filter(r => String(r.section || '').trim() === 'อุตสาหกรรม');
+  const rows = (planEditing ? planDraft : planRowsOf(planMonth)).filter(r => String(r.section || '').trim() === 'อุตสาหกรรม' && !r.cancelled);   // ไม่นับงานที่ยกเลิก
   if (!rows.length) {
-    return '<div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500">ไม่มีงานหมวดอุตสาหกรรมในแผนเดือนนี้</div>';
+    return '<div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500">ไม่มีงานหมวดอุตสาหกรรมที่ยังไม่ยกเลิกในแผนเดือนนี้</div>';
   }
   const actual = !planEditing ? PAY_ACTUAL[String(planMonth)] : null;   // เดือนที่มียอดจริงแล้ว ใช้ตัวเลขจริง
   const units = actual ? actual.units : rows.reduce((a, r) => a + (Number(r.qty) || 0) * unitPer(r), 0);
