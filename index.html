@@ -868,13 +868,13 @@ function markCutCards(target) {
     set('.return-input', Number(it.ret) || 0);
     set('.scrap-input', Number(it.scrap) || 0);
     const used = card.querySelector('.used-val'); if (used) used.textContent = formatNum(Number(it.used) || 0);
-    // ติ๊กถูก "ตัดแล้ว" และเวลาที่ตัด ย้ายมาอยู่ในกล่อง Partlist แทนค่าเดิม
-    const pl = card.querySelector('.partlist-val');
-    if (pl) pl.innerHTML = '<span class="text-emerald-700"><i class="fa-solid fa-circle-check"></i> ตัดแล้ว</span>' + (target.time ? `<div class="text-[10px] font-bold text-emerald-700 truncate">${esc(target.time)}</div>` : '');
-    const bn = card.querySelector('.status-banner'); if (bn) bn.classList.add('hidden');
+    const dt = card.querySelector('.diff-text'); if (dt) dt.textContent = 'ตัดไปแล้ว' + (target.time ? ' · ' + target.time : '') + ' (แก้ไขไม่ได้)';
+    const st = card.querySelector('.status-text'); if (st) st.textContent = 'แก้ไขไม่ได้';
+    const bn = card.querySelector('.status-banner'); if (bn) bn.className = 'status-banner flex justify-between items-center px-3 py-2 border rounded-lg text-xs font-bold bg-emerald-100 border-emerald-300 text-emerald-800';
   });
   const total = document.querySelectorAll('#metalCalcContainer .metal-card').length;
   document.getElementById('metalCountBadge').textContent = `เหลือ ${total - cnt} รายการ · ตัดแล้ว ${cnt}`;
+  refreshStockBadges();   // วาดป้ายสต็อกใหม่ให้มีเครื่องหมายตัดแล้วหน้าคำว่า สต็อก
 }
 
 // ===== เครื่องคิดเลข =====
@@ -1094,6 +1094,7 @@ function refreshStockBadges() {
       badge.textContent = out ? `สต็อกหมด (คงเหลือ ${formatNum(q)} ซม.)` : `สต็อกคงเหลือ: ${formatNum(q)} ซม.`;
       if (!out && q <= LOW_STOCK_CM) { badge.className = 'stock-badge text-[11px] font-bold text-right low-stock rounded-lg px-2 py-1'; badge.textContent = `ใกล้หมด · คงเหลือ ${formatNum(q)} ซม.`; }
     } else { badge.className = 'stock-badge text-[11px] font-bold text-slate-500 text-right'; badge.textContent = 'สต็อก: ไม่พบรหัส'; }
+    if (card.classList.contains('cut-done')) badge.insertAdjacentHTML('afterbegin', '<span class="text-emerald-700 font-extrabold"><i class="fa-solid fa-circle-check"></i> ตัดแล้ว · </span>');
   });
 }
 
