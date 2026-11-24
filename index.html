@@ -155,7 +155,7 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
 <body class="bg-slate-100 p-2 pt-4 pb-28 text-slate-800 min-h-screen">
 <div class="w-full max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 p-3 pt-4 shadow-md space-y-3 mt-1">
 
-<div class="flex justify-between items-center -mt-1"><span id="lastUpd" class="text-[11px] font-bold text-slate-400"></span><button id="themeBtn" type="button" onclick="toggleTheme()" class="px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-600"></button></div>
+<div class="flex justify-between items-center -mt-1"><span id="lastUpd" class="text-[11px] font-bold text-slate-400"></span><div class="flex items-center gap-1.5"><a href="guide.html" target="_blank" rel="noopener" class="px-3 py-1 rounded-full border border-blue-300 bg-blue-50 text-xs font-bold text-blue-800"><i class="fa-solid fa-circle-question"></i> คู่มือ</a><button id="themeBtn" type="button" onclick="toggleTheme()" class="px-3 py-1 rounded-full border border-slate-300 text-xs font-bold text-slate-600"></button></div></div>
 <!-- แผนงาน -->
 <div id="pagePlan" class="page active space-y-3">
   <div class="text-center py-0.5"><span class="inline-block border-2 border-blue-700 bg-white px-5 py-0.5 rounded-full font-bold text-base">แผนงานประจำเดือน</span></div>
@@ -213,8 +213,8 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
   <div id="adjustBox" class="hidden p-3 bg-amber-50 border-2 border-amber-300 rounded-xl space-y-2">
     <div class="text-xs font-extrabold text-amber-900"><i class="fa-solid fa-screwdriver-wrench"></i> โหมดปรับสต็อก (ไม่ใช่งานผลิต)</div>
     <div class="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border border-amber-300">
-      <button id="adjStickBtn" type="button" onclick="setAdjStick(true)" class="py-2 rounded-lg font-extrabold text-xs">เหล็กเข้า (กรอกเป็นเส้น)</button>
-      <button id="adjCmBtn" type="button" onclick="setAdjStick(false)" class="py-2 rounded-lg font-extrabold text-xs">แก้สต็อกไม่ตรง (กรอก ซม.)</button>
+      <button id="adjStickBtn" type="button" onclick="setAdjStick(true)" class="py-2 rounded-lg font-extrabold text-xs">➕ เหล็กเข้า (กรอกเป็นเส้น)</button>
+      <button id="adjCmBtn" type="button" onclick="setAdjStick(false)" class="py-2 rounded-lg font-extrabold text-xs">✏️ แก้สต็อกไม่ตรง (กรอกเป็น ซม.)</button>
     </div>
     <div id="adjHint" class="text-[11px] font-bold text-amber-800">เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณความยาวให้เอง (600 ซม. / ML 240 ซม.)</div>
     <input type="text" id="adjustNote" placeholder="หมายเหตุ เช่น รับเข้าล็อตใหม่ / นับสต็อกไม่ตรง (จำเป็น)" class="w-full p-2 border border-amber-300 rounded-lg font-bold text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -1218,6 +1218,7 @@ async function commitStock() {
   if (!submitId) submitId = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random();
   let cutNotice = null;
   let doneInfo = null;
+  let partialNode = null;
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังบันทึกการตัดสต็อก');
@@ -1225,17 +1226,20 @@ async function commitStock() {
     const j = await postApi({ id: submitId, user: who, by: who, jobCode: currentActiveJob.code, jobName: currentActiveJob.name,
       pump: isAdj ? (adjNote || '-') : currentActiveJob.pump, qty: isAdj ? 0 : qty, items: items,
       month: sendMonth, groupId: groupId, merge: !!mergeJob, note: isAdj ? '' : jobNote,
-      planRowId: isAdj ? '' : (mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '')) });
+      planRowId: isAdj ? '' : (mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '')), partial: !isAdj });
     hideBusy();
     if (j.ok) {
+      const skipped = Array.isArray(j.skipped) ? j.skipped : [];
+      const cutNow = skipped.length ? items.filter(it => !skipped.some(x => x.code === it.code)) : items;
       // ตัดเสร็จ -> ล้างงานออกจากหน้าคำนวณทันที (ไม่คาไว้)
       loadHistory();
       clearJobPanel();
       loadStock();
-      toast('ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
+      toast(skipped.length ? 'ตัดได้บางส่วน ⚠️' : 'ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
       doneInfo = isAdj ? ('ปรับสต็อกเรียบร้อย' + adjSticksText(items)) : `ตัดสต็อกเรียบร้อย\nโค้ดงานที่ตัด: ${jobSnap.code}\n${jobSnap.name || ''}`;
+      if (skipped.length) { partialNode = partialCutNode(jobSnap, skipped, cutNow); doneInfo = null; }
       if (!isAdj) {
-        cutNotice = buildCutNotice({ jobCode: jobSnap.code, jobName: jobSnap.name, pump: jobSnap.pump, qty, month: sendMonth, items,
+        cutNotice = buildCutNotice({ jobCode: jobSnap.code, jobName: jobSnap.name, pump: jobSnap.pump, qty, month: sendMonth, items: cutNow,
           before: mergeJob ? (mergeJob.items || []).map(it => it.name) : [],
           planRowId: mergeJob ? (mergeJob.planRowId || '') : (planSnap || '') });
       }
@@ -1246,7 +1250,32 @@ async function commitStock() {
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   if (cutNotice) notifyLine(cutNotice);   // แจ้งเตือนไลน์อัตโนมัติ (ไม่รอ ไม่บล็อกการใช้งาน)
-  if (doneInfo) { await uiDialog(doneInfo, false); switchTab('plan'); }   // ป๊อปอัพยืนยัน แล้วกลับหน้าแผน
+  if (partialNode) { await uiDialog('', false, partialNode); switchTab('plan'); }   // ตัดได้บางส่วน: ป๊อปอัปเด่นกลางจอ แล้วกลับหน้าแผน
+  else if (doneInfo) { await uiDialog(doneInfo, false); switchTab('plan'); }   // ป๊อปอัพยืนยัน แล้วกลับหน้าแผน
+}
+
+// ป๊อปอัปกลางจอ: ตัดได้บางส่วน (รายการที่สต็อกไม่พอจะค้างอยู่ ยังไม่ถูกตัด)
+function partialCutNode(job, skipped, cutNow) {
+  const box = document.createElement('div');
+  box.className = 'space-y-3 text-left';
+  const esc2 = t => esc(String(t));
+  const cutList = cutNow.length ? cutNow.map(it => `<div class="text-sm font-bold text-emerald-900">• ${esc2(it.name)}</div>`).join('') : '<div class="text-sm font-bold text-slate-500">-</div>';
+  const skipList = skipped.map(x => `<div class="p-2 bg-white border border-rose-300 rounded-lg">
+      <div class="text-sm font-extrabold text-rose-900">${esc2(x.name)}</div>
+      <div class="text-xs font-bold text-rose-700">สต็อกเหลือ ${formatNum(Number(x.have) || 0)} · ต้องตัด ${formatNum(Number(x.need) || 0)}</div></div>`).join('');
+  box.innerHTML = `
+    <div class="p-3 rounded-xl bg-rose-600 text-white text-center">
+      <div class="text-lg font-black"><i class="fa-solid fa-triangle-exclamation"></i> ตัดได้บางส่วน</div>
+      <div class="text-xs font-bold mt-0.5">โค้ด ${esc2(job.code)} ${esc2(job.name || '')}</div>
+    </div>
+    <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300">
+      <div class="text-xs font-extrabold text-emerald-800 mb-1">✅ ตัดแล้ว (${cutNow.length} รายการ)</div>${cutList}
+    </div>
+    <div class="p-2.5 rounded-xl bg-rose-50 border-2 border-rose-400 space-y-1.5">
+      <div class="text-xs font-extrabold text-rose-800 mb-1">❌ ยังตัดไม่ได้ สต็อกไม่พอ (${skipped.length} รายการ)</div>${skipList}
+    </div>
+    <div class="text-[11px] font-bold text-slate-600">รายการที่ตัดไม่ได้ยังค้างอยู่ในแผน กลับมาตัดเมื่อสต็อกพอ</div>`;
+  return box;
 }
 
 // ===== แผนงาน =====
@@ -2585,14 +2614,16 @@ function shareHistoryLine(id) {
 
 // ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
 function editBtnHtml(j) {
-  if (j.cancelled || j.jobCode === 'ADJUST') return '';
-  return `<button type="button" data-id="${esc(j.id)}" onclick="editJob(this.dataset.id)" class="w-full py-2.5 mb-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen"></i> แก้ไขรายการ</button>`;
+  if (j.cancelled) return '';
+  const label = j.jobCode === 'ADJUST' ? 'แก้ไขการปรับสต็อก' : 'แก้ไขรายการ';
+  return `<button type="button" data-id="${esc(j.id)}" onclick="editJob(this.dataset.id)" class="w-full py-2.5 mb-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-pen"></i> ${label}</button>`;
 }
 // กดแก้ไขรายการ -> เปิดหน้าคำนวณเหล็กตามงาน พร้อมค่าเดิมของรายการ แก้แล้วกดยืนยันการแก้ไข
 async function editJob(id) {
   const card = historyJobs.find(x => String(x.id) === String(id));
-  if (!card || card.cancelled || card.jobCode === 'ADJUST') return;
+  if (!card || card.cancelled) return;
   if (!(await askPin('กรอกรหัสก่อนแก้ไขรายการ'))) return;
+  if (card.jobCode === 'ADJUST') return editAdjust(card);
   const entry = bomEntriesOf(card.jobCode).find(e => e.pump === card.pump);
   if (!entry) return uiAlert(`ไม่พบงาน ${card.jobCode} (${card.pump}) ใน BOM จึงแก้ไขไม่ได้`);
   if (!(await uiDialog('⚠️ กำลังแก้ไขรายการที่ตัดสต็อกไปแล้ว', true))) return;
@@ -2625,12 +2656,44 @@ async function editJob(id) {
   switchTab('calc');
 }
 
+// แก้ไขการปรับสต็อก: เปิดหน้าคำนวณในโหมดปรับสต็อก (หน่วย ซม.) พร้อมค่าเดิม ยืนยันแล้วคืนรอบเดิมและบันทึกค่าใหม่
+async function editAdjust(card) {
+  if (!(await uiDialog('⚠️ กำลังแก้ไขการปรับสต็อกที่บันทึกไปแล้ว', true))) return;
+  editTarget = card;
+  currentActiveJob = makeAdjustJob();
+  mergeTarget = null; planQtyLock = false; currentPlanRowId = '';
+  setAdjustMode(true);
+  setAdjStick(false);   // กรอกค่าเดิมเป็น ซม. ตรงๆ
+  document.getElementById('adjustNote').value = (card.pump && card.pump !== '-') ? card.pump : '';
+  document.getElementById('selectedJobTitle').textContent = '✏️ แก้ไขการปรับสต็อก';
+  document.getElementById('selectedJobPump').textContent = 'หมายเหตุเดิม: ' + (card.pump || '-');
+  renderMetalCalcRows(currentActiveJob.metals);
+  (card.items || []).forEach(it => {
+    const mc = document.querySelector(`#metalCalcContainer .metal-card[data-metal="${CSS.escape(it.name)}"]`);
+    if (!mc) return;
+    mc.querySelector('.withdraw-input').value = Number(it.withdraw) || '';
+    mc.querySelector('.return-input').value = Number(it.ret) || '';
+    mc.querySelector('.scrap-input').value = Number(it.scrap) || '';
+  });
+  calculateAllRows();
+  const btn = document.getElementById('btnCommit');
+  btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
+  btn.classList.remove('bg-rose-600', 'hover:bg-rose-700'); btn.classList.add('bg-amber-500', 'hover:bg-amber-600', 'text-amber-950');
+  document.getElementById('editModeBanner').classList.remove('hidden');
+  document.getElementById('adjustFromCalcBtn').classList.add('hidden');
+  switchTab('calc');
+}
+
 async function commitEdit() {
+  const isAdjE = editTarget.jobCode === 'ADJUST';
+  const adjNoteE = (document.getElementById('adjustNote').value || '').trim();
+  if (isAdjE && !adjNoteE) return uiAlert('กรุณาใส่หมายเหตุการปรับสต็อก');
   const items = [];
   document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
     const w = parseFloat(card.querySelector('.withdraw-input').value) || 0;
-    const r = parseFloat(card.querySelector('.return-input').value) || 0;
+    const r0 = parseFloat(card.querySelector('.return-input').value) || 0;
     const s = parseFloat(card.querySelector('.scrap-input').value) || 0;
+    const r = (isAdjE && adjStickMode ? stickLenOf(METAL_CODE[card.dataset.metal]) : 1) * r0;   // โหมดเหล็กเข้า: เส้น -> ซม.
     if (!w && !r && !s) return;
     items.push({ code: METAL_CODE[card.dataset.metal], name: card.dataset.metal, bom: parseFloat(card.dataset.bom) || 0,
       withdraw: w, ret: r, scrap: s });
@@ -2652,7 +2715,7 @@ async function commitEdit() {
   showBusy('กำลังแก้ไขรายการและปรับสต็อก');
   try {
     const j = await postApi({ action: 'edit', gids: editTarget.gids || [editTarget.id], items: items,
-      keepDate: !keepChk.checked, user: who, by: who });   // ติ๊ก = ใช้วันที่แก้ไข
+      keepDate: !keepChk.checked, user: who, by: who, note: isAdjE ? adjNoteE : '' });   // ติ๊ก = ใช้วันที่แก้ไข
     hideBusy();
     if (!j.ok) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข'; return uiAlert('แก้ไขไม่สำเร็จ:\n' + (j.message || j.error)); }
     const newId = j.groupId;
@@ -3052,11 +3115,11 @@ function setAdjStick(on) {
   if (sb) sb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'bg-amber-500 text-white shadow' : 'text-amber-900'}`;
   if (cb) cb.className = `py-2 rounded-lg font-extrabold text-xs ${on ? 'text-amber-900' : 'bg-amber-500 text-white shadow'}`;
   const hint = document.getElementById('adjHint');
-  if (hint) hint.textContent = on ? 'เบิก = หักออก (ซม.) · เข้า = กรอกจำนวนเส้น ระบบคูณความยาวให้เอง (600 ซม. / ML 240 ซม.)' : 'เบิก = หักสต็อกออก · คืน = เพิ่มสต็อกเข้า (หน่วย ซม.)';
+  if (hint) hint.textContent = on ? 'เหล็กเข้า: กรอกจำนวนเส้นที่รับเข้า ระบบคูณความยาวให้เอง (ทั่วไป 600 ซม./เส้น · ML 240 ซม./เส้น)' : 'แก้สต็อกไม่ตรง: เบิก = หักออกจากสต็อก · คืน = เพิ่มเข้าสต็อก (หน่วย ซม.)';
   document.querySelectorAll('#metalCalcContainer .metal-card').forEach(card => {
     // โหมดเหล็กเข้า: เหลือแค่ช่องจำนวนเส้น (ซ่อน Partlist/ใช้จริง/BOM/เบิก/เศษ/แถบสถานะ)
     const rw = card.querySelector('.return-input')?.closest('div.bg-white');
-    if (rw) { rw.firstElementChild.textContent = on ? 'เข้า (เส้น)' : 'คืน (ซม.)'; rw.classList.toggle('col-span-2', on); }
+    if (rw) { rw.firstElementChild.textContent = on ? `เข้า (เส้น) · 1 เส้น = ${stickLenOf(METAL_CODE[card.dataset.metal])} ซม.` : 'คืน (ซม.)'; rw.classList.toggle('col-span-2', on); }
     const hideEls = [
       card.querySelector('.partlist-val')?.parentElement,
       card.querySelector('.used-val')?.parentElement,

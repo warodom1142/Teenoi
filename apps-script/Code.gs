@@ -171,7 +171,10 @@ function commit_(ss, d) {
   const st = readStock_(stockSh);
 
   // ตรวจทั้งหมดก่อน ถ้ามีปัญหาจะไม่ตัดอะไรเลย
+  // partial = ตัดเฉพาะเหล็กที่สต็อกพอ (ใช้กับงานผลิตเท่านั้น) รายการที่สต็อกไม่พอจะถูกข้ามและส่งกลับให้หน้าเว็บแจ้ง
+  const partial = d.partial === true && String(d.jobCode || '') !== 'ADJUST';
   const problems = [];
+  const skipped = [];
   const seen = {};
   const items = d.items.map(it => {
     const x = {
@@ -186,11 +189,14 @@ function commit_(ss, d) {
     const i = st.rowOf[x.code];
     if (i === undefined) problems.push('ไม่พบรหัส ' + x.code + ' (' + x.name + ') ในชีท Stock');
     else if (round_(Number(st.data[i][2]) - x.used) < 0) {
-      problems.push(x.name + ' สต็อกไม่พอ (เหลือ ' + st.data[i][2] + ' ต้องตัด ' + x.used + ')');
+      if (partial) { x.skip = true; skipped.push({ code: x.code, name: x.name, have: Number(st.data[i][2]) || 0, need: x.used }); }
+      else problems.push(x.name + ' สต็อกไม่พอ (เหลือ ' + st.data[i][2] + ' ต้องตัด ' + x.used + ')');
     }
     return x;
   });
   if (problems.length) return fail_('validation', problems.join('\n'));
+  const cutItems = items.filter(x => !x.skip);
+  if (!cutItems.length) return fail_('validation', 'สต็อกไม่พอทุกรายการ ยังตัดไม่ได้\n' + skipped.map(x => x.name + ' (เหลือ ' + x.have + ' ต้องตัด ' + x.need + ')').join('\n'));
 
   // groupId = ตัวจับกลุ่ม "งานเดียวกัน" (คนละวันก็รวมประวัติเป็นการ์ดเดียว) — ถ้าไม่ส่งมา fallback เป็น id ของแถวนี้เอง
   const groupId = String(d.groupId || d.id);
@@ -207,13 +213,13 @@ function commit_(ss, d) {
     if (found.some(v => v[18] === CANCELLED)) return fail_('validation', 'งานที่เลือกรวมถูกยกเลิกไปแล้ว');
     const have = {};
     found.forEach(v => { have[String(v[6]).trim()] = true; });
-    const dup = items.filter(x => have[x.code]).map(x => x.name);
+    const dup = cutItems.filter(x => have[x.code]).map(x => x.name);
     if (dup.length) return fail_('validation', 'เหล็กนี้ถูกตัดในงานที่เลือกรวมแล้ว: ' + dup.join(', '));
   }
 
   const now = new Date();
   const logRows = [];
-  items.forEach(x => {
+  cutItems.forEach(x => {
     const i = st.rowOf[x.code];
     const before = Number(st.data[i][2]);
     const after = round_(before - x.used);
@@ -228,7 +234,7 @@ function commit_(ss, d) {
   logSh.getRange(logSh.getLastRow() + 1, 1, logRows.length, LOG_HEADERS.length).setValues(logRows);
   SpreadsheetApp.flush();
 
-  return out_({ ok: true, count: logRows.length, groupId: groupId });
+  return out_({ ok: true, count: logRows.length, groupId: groupId, skipped: skipped.map(x => ({ code: x.code, name: x.name, have: x.have, need: x.need })) });
 }
 
 // แก้ไขรายการที่ตัดไปแล้ว: คืนสต็อกของรอบเดิมทั้งหมด แล้วตัดตามค่าใหม่ในครั้งเดียว (ทำในล็อกเดียวกัน)
@@ -292,11 +298,12 @@ function edit_(ss, d) {
   const rowId = Utilities.getUuid();
   const groupId = Utilities.getUuid();
   const logRows = [];
+  const pumpVal = (String(head[2]) === 'ADJUST' && String(d.note || '').trim()) ? String(d.note).trim().slice(0, 200) : head[4];
   items.forEach(x => {
     const before = cur[x.code];
     const after = round_(before - x.used);
     cur[x.code] = after;
-    logRows.push([rowId, time, head[2], head[3], head[4], qty,
+    logRows.push([rowId, time, head[2], head[3], pumpVal, qty,
       x.code, x.name, x.bom, x.bom * qty, x.withdraw, x.ret, x.used,
       x.used - x.bom * qty, before, after,
       by, x.scrap, '', '', '',
