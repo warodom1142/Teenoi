@@ -1524,8 +1524,10 @@ function renderPlan() {
   const rows = planEditing ? planDraft : planRowsOf(planMonth);
   const bomLoaded = bomDatabase.length > 0;
   const total = rows.reduce((a, r) => a + (r.cancelled ? 0 : (Number(r.qty) || 0)), 0);
-  const totalUnits = rows.reduce((a, r) => a + (r.cancelled ? 0 : (Number(r.qty) || 0) * unitPer(r)), 0);
-  const noUnit = rows.filter(r => !(unitPer(r) > 0)).length;
+  // ยูนิตรวมคิดเฉพาะงานอุตสาหกรรมที่ยังไม่ยกเลิก
+  const indRows = rows.filter(r => !r.cancelled && String(r.section || '') === 'อุตสาหกรรม');
+  const totalUnits = indRows.reduce((a, r) => a + (Number(r.qty) || 0) * unitPer(r), 0);
+  const noUnit = indRows.filter(r => !(unitPer(r) > 0)).length;
   // คืบหน้าทั้งแผน = จำนวนประเภทเหล็กที่ตัดแล้ว / ประเภทเหล็กทั้งหมดของทุกงานในแผน (เฉพาะงานที่มีใน BOM)
   // นับเฉพาะงานที่ไม่ยกเลิกและมี BOM (งานพิเศษ/ไม่พบใน BOM ไม่นับทั้งในตัวหารและตัวตั้ง)
   let pg = null;
