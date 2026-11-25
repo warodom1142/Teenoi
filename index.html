@@ -825,7 +825,7 @@ async function applyJobToCalculator(planQty, pre) {
   const job = currentActiveJob;
   mergeTarget = null;
   planQtyLock = Number(planQty) > 0;
-  document.getElementById('selectedJobTitle').textContent = `${job.code} - ${job.name}`;
+  document.getElementById('selectedJobTitle').textContent = `${currentPlanRowId ? planLabelById(currentPlanRowId, job.code, currentJobMonth) : job.code} - ${job.name}`;
   document.getElementById('selectedJobPump').textContent = `ปั๊ม: ${job.pump}`;
   document.getElementById('jobNoteInput').value = '';
   setAdjustMode(job.code === 'ADJUST');
@@ -1336,6 +1336,21 @@ function togglePlanSection(name) {
   renderPlan();
   postApi({ action: 'planCollapsed', collapsed: arr }).catch(() => {});
 }
+// รหัสในแผน: ต่อ -1 -2 ... เฉพาะเมื่อรหัสเดียวกันมีมากกว่า 1 แถวในเดือนนั้น
+function planCodeLabel(r, rows) {
+  const same = (rows || []).filter(x => String(x.code) === String(r.code));
+  if (same.length < 2) return String(r.code);
+  const pos = same.findIndex(x => x === r || (x.id && String(x.id) === String(r.id)));
+  const n = Number(r.seq) || (pos >= 0 ? pos + 1 : 0);
+  return n ? `${r.code}-${n}` : String(r.code);
+}
+// ป้ายรหัสของประวัติ/งานจากแถวแผนที่ผูกไว้ (ถ้าไม่ผูกหรือหาไม่เจอ แสดงรหัสเดิม)
+function planLabelById(id, code, month) {
+  if (!id || !code) return String(code || '');
+  const p = planAll.find(x => String(x.id) === String(id) && String(x.code) === String(code) && String(x.month) === String(month));
+  if (!p) return String(code);
+  return planCodeLabel(p, planRowsOf(month));
+}
 function unitPer(r) { return (planEditing && r.units !== undefined) ? (Number(r.units) || 0) : (unitMap[r.code] || 0); }
 
 const loadUnits = () => sharedFetch('units', fetchUnits);
@@ -1610,7 +1625,7 @@ function renderPlan() {
         const isCustomRow = isCustomCode(r.code);
         if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
         const prCell = r.cancelled ? '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-300 rounded-full px-1.5 py-0.5">ยกเลิก</span>' : isCustomRow ? '<span class="inline-block text-[11px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-lg px-2 py-1">custom</span>' : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
-        html += `<tr class="plan-row ${r.cancelled ? 'plan-cancel' : missing ? 'bg-rose-50' : ''}" onclick="${r.cancelled ? `openCancelledPlanHistory(${i})` : pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td class="font-black text-[21px] text-slate-800">${n + 1}</td><td class="font-black text-[21px] text-slate-900 ${r.cancelled ? 'cx' : ''}">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(r.code) + planPumpBadge(r)}</td>
+        html += `<tr class="plan-row ${r.cancelled ? 'plan-cancel' : missing ? 'bg-rose-50' : ''}" onclick="${r.cancelled ? `openCancelledPlanHistory(${i})` : pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td class="font-black text-[21px] text-slate-800">${n + 1}</td><td class="font-black text-[21px] text-slate-900 ${r.cancelled ? 'cx' : ''}">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(planCodeLabel(r, rows)) + planPumpBadge(r)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}</td><td class="font-black text-[21px] text-blue-900 ${r.cancelled ? 'cx' : ''}">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
@@ -1684,7 +1699,7 @@ async function askPin(msg) {
 
 async function startPlanEdit() {
   if (!(await askPin('ใส่รหัสเพื่อแก้ไขแผนงาน'))) return;
-  planDraft = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, pump: r.pump || '', qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '', cancelled: !!r.cancelled }));
+  planDraft = planRowsOf(planMonth).map(r => ({ id: r.id || '', section: r.section, code: r.code, pump: r.pump || '', qty: r.qty, units: unitMap[r.code] || 0, note: r.note || '', cancelled: !!r.cancelled, seq: Number(r.seq) || 0 }));
   planEditing = true; renderPlan();
 }
 function cancelPlanEdit() { planEditing = false; planDraft = []; renderPlan(); }
@@ -1782,7 +1797,7 @@ async function addPlanRow(section) {
   const bomPumps = bomEntriesOf(code).map(e => e.pump);
   const noPump = h => !h.pump || !bomPumps.includes(h.pump);
   const reuse = hist.find(h => (h.pump || '') === (pump || '')) || hist.find(noPump);
-  planDraft.push({ id: reuse ? String(reuse.planRowId) : newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0 });
+  planDraft.push({ id: reuse ? String(reuse.planRowId) : newPlanId(), section: section || '', code: code, pump: pump, qty: 1, units: unitMap[code] || 0, seq: 0 });
   renderPlan();
 }
 async function addPlanSection() {
@@ -1798,10 +1813,10 @@ async function addPlanSection() {
 async function savePlanRows(month, rows) {
   showBusy('กำลังบันทึกแผนงาน');
   try {
-    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ id: String(r.id || ''), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || ''), cancelled: !!r.cancelled })) });
+    const j = await postApi({ action: 'planSave', month: String(month), rows: rows.map(r => ({ id: String(r.id || ''), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || ''), cancelled: !!r.cancelled, seq: Number(r.seq) || 0 })) });
     hideBusy();
     if (!j.ok) { await uiAlert('บันทึกแผนไม่สำเร็จ:\n' + (j.message || j.error)); return false; }
-    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map(r => ({ id: String(r.id || ''), month: String(month), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || ''), cancelled: !!r.cancelled })));
+    planAll = planAll.filter(r => String(r.month) !== String(month)).concat(rows.map((r, i) => ({ id: String(r.id || ''), month: String(month), section: r.section || '', code: String(r.code), pump: String(r.pump || ''), qty: Number(r.qty), note: String(r.note || ''), cancelled: !!r.cancelled, seq: (Array.isArray(j.seqs) && j.seqs[i]) || Number(r.seq) || 0 })));
     return true;
   } catch (e) {
     hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); return false;
@@ -2507,7 +2522,7 @@ function openHistoryJob(id) {
   const tRows = [
     ['วันที่ตัดล่าสุด', esc(j.time)],
     ['ผู้ตัดล่าสุด', esc(j.by || j.user || '-')],
-    ['โค้ด', esc(j.jobCode)],
+    ['โค้ด', esc(j.jobCode === 'ADJUST' ? j.jobCode : planLabelById(j.planRowId, j.jobCode, j.month))],
     ['ชื่องาน', esc(j.jobName)],
     ['ปั๊ม', esc(j.pump)],
     ['จำนวนผลิต', `${formatNum(Number(j.qty) || 0)} ตัว`],
@@ -2581,7 +2596,7 @@ function buildCutNotice(o) {
   const note = planNoteOf({ jobCode: o.jobCode, month: o.month, planRowId: o.planRowId });
   // ชื่องานเอามาด้วย แต่ตัดรายละเอียดในวงเล็บออก เช่น "RO FAST PURE 12,000 LPD (PLD 2-11)" -> "RO FAST PURE 12,000 LPD"
   const nm = String(o.jobName || '').replace(/\(.*?\)/g, ' ').replace(/\s+/g, ' ').trim();
-  const head = `งาน ${o.jobCode}${nm ? '\n' + nm : ''}\nจำนวน ${qtyTxt} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
+  const head = `งาน ${planLabelById(o.planRowId, o.jobCode, o.month)}${nm ? '\n' + nm : ''}\nจำนวน ${qtyTxt} ตัว${note ? ` (โน้ต: ${note})` : ''}`;
   if (!remain.length) return `${head}\n\n✅ จบงานเรียบร้อย` + list('✂️ ตัดแล้ว', cutNow);
   return head + list('✂️ ตัดแล้ว', cutNow) + list('📦 คงเหลือ', remain);
 }

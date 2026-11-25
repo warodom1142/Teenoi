@@ -3,7 +3,7 @@ const TOKEN = 'bomcal';           // ต้องตรงกับ STOCK_TOKEN 
 const STOCK_SHEET = 'Stock';      // คอลัมน์ A=รหัส, B=ชื่อ, C=คงเหลือ
 const LOG_SHEET = 'Log';
 const PLAN_SHEET = 'Plan';        // แผนงานรายเดือน: A=เดือน, B=หมวด, C=รหัสงาน, D=จำนวน
-const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว', 'ปั๊ม', 'ยกเลิก'];
+const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว', 'ปั๊ม', 'ยกเลิก', 'เลขกำกับ'];
 const UNIT_SHEET = 'Units';       // ยูนิตต่อ 1 เครื่อง ของแต่ละรหัสงาน: A=รหัสงาน, B=ยูนิตต่อเครื่อง
 const UNIT_HEADERS = ['รหัสงาน', 'ยูนิตต่อเครื่อง'];
 
@@ -429,6 +429,7 @@ function ensurePlan_(ss) {
   if (!sh.getRange(1, 6).getValue()) sh.getRange(1, 6).setValue('รหัสแถว');
   if (!sh.getRange(1, 7).getValue()) sh.getRange(1, 7).setValue('ปั๊ม');
   if (!sh.getRange(1, 8).getValue()) sh.getRange(1, 8).setValue('ยกเลิก');
+  if (!sh.getRange(1, 9).getValue()) sh.getRange(1, 9).setValue('เลขกำกับ');
   return sh;
 }
 
@@ -439,11 +440,28 @@ function getPlan_(ss) {
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
   if (last < 2) return { ok: true, plan: [] };
-  const v = sh.getRange(2, 1, last - 1, 8).getValues();
+  const v = sh.getRange(2, 1, last - 1, 9).getValues();
+  // ย้อนหลัง: รหัสซ้ำในเดือนเดียวกันที่ยังไม่มีเลขกำกับ ให้เรียงตามลำดับในชีตแล้วบันทึกลงชีตครั้งเดียว
+  const cnt = {};
+  v.forEach(r => { const c = String(r[2]).trim(); if (c) { const k = String(r[0]) + '|' + c; cnt[k] = (cnt[k] || 0) + 1; } });
+  const nextSeq = {}, fill = [];
+  let changed = false;
+  v.forEach(r => {
+    const c = String(r[2]).trim(); if (!c) { fill.push([r[8]]); return; }
+    const k = String(r[0]) + '|' + c;
+    if (cnt[k] < 2) { fill.push([Number(r[8]) || 0]); return; }
+    nextSeq[k] = nextSeq[k] || 0;
+    let sq = Number(r[8]) || 0;
+    if (!sq) { sq = nextSeq[k] + 1; changed = true; }
+    if (sq > nextSeq[k]) nextSeq[k] = sq;
+    fill.push([sq]);
+  });
+  if (changed) sh.getRange(2, 9, v.length, 1).setValues(fill);
   return {
     ok: true,
     plan: v.filter(r => String(r[2]).trim() !== '').map(r => ({
-      id: String(r[5] || ''), month: String(r[0]), section: String(r[1] || ''), code: String(r[2]).trim(), qty: Number(r[3]) || 0, note: String(r[4] || ''), pump: String(r[6] || ''), cancelled: String(r[7] || '').trim() === 'ยกเลิก'
+      id: String(r[5] || ''), month: String(r[0]), section: String(r[1] || ''), code: String(r[2]).trim(), qty: Number(r[3]) || 0, note: String(r[4] || ''), pump: String(r[6] || ''), cancelled: String(r[7] || '').trim() === 'ยกเลิก',
+      seq: (function (i) { return Number(fill[i][0]) || 0; })(v.indexOf(r))
     }))
   };
 }
@@ -460,22 +478,34 @@ function planSave_(ss, d) {
     note: String(r.note || '').trim().slice(0, 200),
     id: String(r.id || '').trim().slice(0, 60),
     pump: String(r.pump || '').trim().slice(0, 60),
-    cancelled: !!r.cancelled
+    cancelled: !!r.cancelled,
+    seq: Math.max(0, Math.floor(Number(r.seq) || 0))
   }));
   if (rows.some(r => !r.code || r.code.length > 20)) return fail_('validation', 'มีบรรทัดที่ไม่มีรหัสงาน');
 
+  // เลขกำกับต่อรหัสในเดือนเดียวกัน: เลขเดิมคงไว้ (ซ้ำหรือว่างจะได้เลขใหม่ต่อจากสูงสุด)
+  const groups = {};
+  rows.forEach(r => { const k = r.code; (groups[k] = groups[k] || []).push(r); });
+  Object.keys(groups).forEach(k => {
+    const list = groups[k];
+    const taken = {};
+    list.forEach(r => { if (r.seq > 0 && !taken[r.seq]) taken[r.seq] = true; else r.seq = 0; });
+    let top = 0; Object.keys(taken).forEach(x => { if (Number(x) > top) top = Number(x); });
+    list.forEach(r => { if (!r.seq) { top += 1; r.seq = top; } });
+  });
+
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
-  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 8).getValues().filter(r => String(r[0]) !== month);
-  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump, r.cancelled ? 'ยกเลิก' : '']));
-  if (last >= 2) sh.getRange(2, 1, last - 1, 8).clearContent();
+  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 9).getValues().filter(r => String(r[0]) !== month);
+  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump, r.cancelled ? 'ยกเลิก' : '', r.seq]));
+  if (last >= 2) sh.getRange(2, 1, last - 1, 9).clearContent();
   if (all.length) {
     sh.getRange(2, 1, all.length, 1).setNumberFormat('@');   // เดือน (รองรับ "2027-01") เก็บเป็นข้อความ ไม่ให้ชีทแปลงเป็นวันที่
     sh.getRange(2, 3, all.length, 1).setNumberFormat('@');   // เก็บรหัสเป็นข้อความ ไม่ให้เลขศูนย์นำหน้าหาย
-    sh.getRange(2, 1, all.length, 8).setValues(all);
+    sh.getRange(2, 1, all.length, 9).setValues(all);
   }
   SpreadsheetApp.flush();
-  return out_({ ok: true, count: rows.length });
+  return out_({ ok: true, count: rows.length, seqs: rows.map(r => r.seq) });
 }
 
 // ===== ยูนิตต่อ 1 เครื่อง (ฐานข้อมูลรายรหัสงาน) =====
