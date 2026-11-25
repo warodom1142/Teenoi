@@ -131,6 +131,7 @@ function doPost(e) {
     if (d.action === 'cancel') return cancel_(ss, d);
     if (d.action === 'edit') return edit_(ss, d);
     if (d.action === 'planSave') return planSave_(ss, d);
+    if (d.action === 'noteSave') return noteSave_(ss, d);
     if (d.action === 'unitSave') return unitSave_(ss, d);
     return commit_(ss, d);
   } catch (err) {
@@ -464,6 +465,23 @@ function getPlan_(ss) {
       seq: (function (i) { return Number(fill[i][0]) || 0; })(v.indexOf(r))
     }))
   };
+}
+
+// แก้หมายเหตุของแถวเดียว (ไม่ต้องใช้รหัส PIN) จับแถวจาก รหัสแถว + เดือน + รหัสงาน ให้ตรงตัว
+function noteSave_(ss, d) {
+  const id = String(d.id || '').trim(), month = String(d.month || '').trim(), code = String(d.code || '').trim();
+  if (!id || !month || !code) return fail_('validation', 'ข้อมูลแถวไม่ครบ');
+  const note = String(d.note || '').trim().slice(0, 200);
+  const sh = ensurePlan_(ss);
+  const last = sh.getLastRow();
+  if (last < 2) return fail_('not_found', 'ไม่พบแถวแผน');
+  const v = sh.getRange(2, 1, last - 1, 9).getValues();
+  const hit = [];
+  v.forEach((r, k) => { if (String(r[5]) === id && String(r[0]) === month && String(r[2]).trim() === code) hit.push(k); });
+  if (hit.length !== 1) return fail_('not_found', 'ไม่พบแถวแผนนี้ (อาจถูกแก้ไขหรือลบไปแล้ว)');
+  sh.getRange(hit[0] + 2, 5).setValue(note);
+  SpreadsheetApp.flush();
+  return out_({ ok: true });
 }
 
 // บันทึกแผนของ "เดือนเดียว" แทนที่ของเดิมทั้งเดือน (เดือนอื่นไม่กระทบ)
