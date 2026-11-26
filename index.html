@@ -1890,8 +1890,10 @@ function updateCustDoneBtn() {
   const wrap = document.getElementById('custDoneWrap');
   if (!wrap) return;
   const r = custDoneRow();
-  wrap.classList.toggle('hidden', !r || !!r.done);   // จบแล้วไม่ต้องแสดงปุ่ม
-  if (!r || r.done) return;
+  // แสดงปุ่มจบงานเฉพาะเมื่อมีการตัดของงานนี้แล้วอย่างน้อยหนึ่งครั้ง และยังไม่จบ
+  const show = !!r && !r.done && customCutCount(r) > 0;
+  wrap.classList.toggle('hidden', !show);
+  if (!show) return;
   const btn = document.getElementById('custDoneBtn');
   btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> จบงาน';
   btn.className = 'w-full py-2.5 font-bold text-sm rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white';
