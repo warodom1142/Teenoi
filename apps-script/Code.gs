@@ -3,7 +3,7 @@ const TOKEN = 'bomcal';           // ต้องตรงกับ STOCK_TOKEN 
 const STOCK_SHEET = 'Stock';      // คอลัมน์ A=รหัส, B=ชื่อ, C=คงเหลือ
 const LOG_SHEET = 'Log';
 const PLAN_SHEET = 'Plan';        // แผนงานรายเดือน: A=เดือน, B=หมวด, C=รหัสงาน, D=จำนวน
-const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว', 'ปั๊ม', 'ยกเลิก', 'เลขกำกับ'];
+const PLAN_HEADERS = ['เดือน', 'หมวด', 'รหัสงาน', 'จำนวน', 'หมายเหตุ', 'รหัสแถว', 'ปั๊ม', 'ยกเลิก', 'เลขกำกับ', 'ปิดงาน'];
 const UNIT_SHEET = 'Units';       // ยูนิตต่อ 1 เครื่อง ของแต่ละรหัสงาน: A=รหัสงาน, B=ยูนิตต่อเครื่อง
 const UNIT_HEADERS = ['รหัสงาน', 'ยูนิตต่อเครื่อง'];
 
@@ -132,6 +132,7 @@ function doPost(e) {
     if (d.action === 'edit') return edit_(ss, d);
     if (d.action === 'planSave') return planSave_(ss, d);
     if (d.action === 'noteSave') return noteSave_(ss, d);
+    if (d.action === 'doneSave') return doneSave_(ss, d);
     if (d.action === 'unitSave') return unitSave_(ss, d);
     return commit_(ss, d);
   } catch (err) {
@@ -431,6 +432,7 @@ function ensurePlan_(ss) {
   if (!sh.getRange(1, 7).getValue()) sh.getRange(1, 7).setValue('ปั๊ม');
   if (!sh.getRange(1, 8).getValue()) sh.getRange(1, 8).setValue('ยกเลิก');
   if (!sh.getRange(1, 9).getValue()) sh.getRange(1, 9).setValue('เลขกำกับ');
+  if (!sh.getRange(1, 10).getValue()) sh.getRange(1, 10).setValue('ปิดงาน');
   return sh;
 }
 
@@ -441,7 +443,7 @@ function getPlan_(ss) {
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
   if (last < 2) return { ok: true, plan: [] };
-  const v = sh.getRange(2, 1, last - 1, 9).getValues();
+  const v = sh.getRange(2, 1, last - 1, 10).getValues();
   // ย้อนหลัง: รหัสซ้ำในเดือนเดียวกันที่ยังไม่มีเลขกำกับ ให้เรียงตามลำดับในชีตแล้วบันทึกลงชีตครั้งเดียว
   const cnt = {};
   v.forEach(r => { const c = String(r[2]).trim(); if (c) { const k = String(r[0]) + '|' + c; cnt[k] = (cnt[k] || 0) + 1; } });
@@ -462,7 +464,8 @@ function getPlan_(ss) {
     ok: true,
     plan: v.filter(r => String(r[2]).trim() !== '').map(r => ({
       id: String(r[5] || ''), month: String(r[0]), section: String(r[1] || ''), code: String(r[2]).trim(), qty: Number(r[3]) || 0, note: String(r[4] || ''), pump: String(r[6] || ''), cancelled: String(r[7] || '').trim() === 'ยกเลิก',
-      seq: (function (i) { return Number(fill[i][0]) || 0; })(v.indexOf(r))
+      seq: (function (i) { return Number(fill[i][0]) || 0; })(v.indexOf(r)),
+      done: String(r[9] || '').trim() === 'เสร็จ'
     }))
   };
 }
@@ -484,6 +487,22 @@ function noteSave_(ss, d) {
   return out_({ ok: true });
 }
 
+// ปิดงาน/เปิดงานใหม่ของงานลูกค้า (ไม่ใช้รหัส) จับแถวด้วย รหัสแถว + เดือน + รหัสงาน
+function doneSave_(ss, d) {
+  const id = String(d.id || '').trim(), month = String(d.month || '').trim(), code = String(d.code || '').trim();
+  if (!id || !month || !code) return fail_('validation', 'ข้อมูลแถวไม่ครบ');
+  const sh = ensurePlan_(ss);
+  const last = sh.getLastRow();
+  if (last < 2) return fail_('not_found', 'ไม่พบแถวแผน');
+  const v = sh.getRange(2, 1, last - 1, 10).getValues();
+  const hit = [];
+  v.forEach((r, k) => { if (String(r[5]) === id && String(r[0]) === month && String(r[2]).trim() === code) hit.push(k); });
+  if (hit.length !== 1) return fail_('not_found', 'ไม่พบแถวแผนนี้ (อาจถูกแก้ไขหรือลบไปแล้ว)');
+  sh.getRange(hit[0] + 2, 10).setValue(d.done ? 'เสร็จ' : '');
+  SpreadsheetApp.flush();
+  return out_({ ok: true });
+}
+
 // บันทึกแผนของ "เดือนเดียว" แทนที่ของเดิมทั้งเดือน (เดือนอื่นไม่กระทบ)
 function planSave_(ss, d) {
   const month = String(d.month || '').trim();
@@ -497,7 +516,8 @@ function planSave_(ss, d) {
     id: String(r.id || '').trim().slice(0, 60),
     pump: String(r.pump || '').trim().slice(0, 60),
     cancelled: !!r.cancelled,
-    seq: Math.max(0, Math.floor(Number(r.seq) || 0))
+    seq: Math.max(0, Math.floor(Number(r.seq) || 0)),
+    done: !!r.done
   }));
   if (rows.some(r => !r.code || r.code.length > 20)) return fail_('validation', 'มีบรรทัดที่ไม่มีรหัสงาน');
 
@@ -514,13 +534,13 @@ function planSave_(ss, d) {
 
   const sh = ensurePlan_(ss);
   const last = sh.getLastRow();
-  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 9).getValues().filter(r => String(r[0]) !== month);
-  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump, r.cancelled ? 'ยกเลิก' : '', r.seq]));
-  if (last >= 2) sh.getRange(2, 1, last - 1, 9).clearContent();
+  const keep = last < 2 ? [] : sh.getRange(2, 1, last - 1, 10).getValues().filter(r => String(r[0]) !== month);
+  const all = keep.concat(rows.map(r => [month, r.section, r.code, r.qty, r.note, r.id, r.pump, r.cancelled ? 'ยกเลิก' : '', r.seq, r.done ? 'เสร็จ' : '']));
+  if (last >= 2) sh.getRange(2, 1, last - 1, 10).clearContent();
   if (all.length) {
     sh.getRange(2, 1, all.length, 1).setNumberFormat('@');   // เดือน (รองรับ "2027-01") เก็บเป็นข้อความ ไม่ให้ชีทแปลงเป็นวันที่
     sh.getRange(2, 3, all.length, 1).setNumberFormat('@');   // เก็บรหัสเป็นข้อความ ไม่ให้เลขศูนย์นำหน้าหาย
-    sh.getRange(2, 1, all.length, 9).setValues(all);
+    sh.getRange(2, 1, all.length, 10).setValues(all);
   }
   SpreadsheetApp.flush();
   return out_({ ok: true, count: rows.length, seqs: rows.map(r => r.seq) });
