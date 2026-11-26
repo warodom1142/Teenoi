@@ -1919,6 +1919,7 @@ async function togglePlanDoneRow(r) {
     cacheSet('plan', planAll);
     if (!planEditing) renderPlan();
     updateCustDoneBtn();
+    if (historyOpenId) openHistoryJob(historyOpenId);
     toast(next ? 'ปิดงานแล้ว ✅' : 'เปิดงานใหม่แล้ว');
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
 }
@@ -2630,7 +2631,7 @@ function openHistoryJob(id) {
     : '';
   const banner = j.cancelled
     ? `<div class="p-3 bg-rose-100 border-2 border-rose-400 rounded-2xl text-xs font-extrabold text-rose-800"><i class="fa-solid fa-ban"></i> ยกเลิกแล้ว · โดย ${esc(j.cancelledBy || '-')} · ${esc(j.cancelledAt || '')}<div class="font-bold mt-0.5">สต็อกถูกคืนแล้วทั้งหมด (รวมทุกวันที่ตัดของงานนี้)</div></div>`
-    : `${editBtnHtml(j)}<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
+    : `${custDoneBtnHtml(j)}${editBtnHtml(j)}<button type="button" data-id="${esc(j.id)}" onclick="cancelJob(this.dataset.id)" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-ban"></i> ยกเลิกรายการนี้ (คืนสต็อกทุกวันที่ตัด)</button>`;
 
   const cards = j.items.map(it => {
     const d = Number(it.diff) || 0, used = Number(it.used) || 0, chg = -used;
@@ -2774,6 +2775,17 @@ function shareHistoryLine(id) {
 }
 
 // ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
+// ปิด/เปิดงานลูกค้าจากหน้าประวัติ (ไม่ใช้รหัส)
+function custDoneBtnHtml(j) {
+  if (j.cancelled || !isCustomCode(j.jobCode) || !j.planRowId) return '';
+  const r = planAll.find(x => String(x.id) === String(j.planRowId) && String(x.code) === String(j.jobCode) && String(x.month) === String(j.month));
+  if (!r) return '';
+  return `<button type="button" data-id="${esc(r.id)}" data-code="${esc(r.code)}" data-month="${esc(r.month)}" onclick="toggleCustDoneFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl ${r.done ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}">${r.done ? '<i class="fa-solid fa-rotate-left"></i> เปิดงานใหม่' : '<i class="fa-solid fa-flag-checkered"></i> ปิดงาน'}</button>`;
+}
+function toggleCustDoneFromHist(btn) {
+  const r = planAll.find(x => String(x.id) === btn.dataset.id && String(x.code) === btn.dataset.code && String(x.month) === btn.dataset.month);
+  if (r) togglePlanDoneRow(r);
+}
 function editBtnHtml(j) {
   if (j.cancelled) return '';
   const label = j.jobCode === 'ADJUST' ? 'แก้ไขการปรับสต็อก' : 'แก้ไขรายการ';
