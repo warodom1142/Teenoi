@@ -1930,7 +1930,8 @@ function openCustomPlanRow(i) {
   if (!r) return;
   const has = historyJobs.some(h => !h.cancelled && h.jobCode === String(r.code) && String(h.month || '') === String(planMonth)
     && (h.planRowId ? String(h.planRowId) === String(r.id || '') : true));
-  if (has) return openCancelledPlanHistory(i);
+  // ปิดงานแล้วและมีประวัติ -> ไปหน้าประวัติเลย / อื่นๆ -> กลับไปหน้าคำนวณ (เหล็กที่ตัดไปแล้วเป็นการ์ดอ่านอย่างเดียว)
+  if (r.done && has) return openCancelledPlanHistory(i);
   return openPlanJob(i);
 }
 
