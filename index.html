@@ -2776,15 +2776,22 @@ function shareHistoryLine(id) {
 
 // ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
 // งานลูกค้าในหน้าประวัติ: ปุ่ม "เปิดงานอีกครั้ง" ย้ายประวัติกลับไปคาไว้หน้าคำนวณ (ปิดงานทำที่หน้าคำนวณ)
+// หาแถวแผนของงานลูกค้าจากประวัติ: ใช้รหัสแถวก่อน ถ้าไม่มีให้ใช้แถวเดียวของรหัสนั้นในเดือนนั้น
+function custRowOfJob(j) {
+  if (j.planRowId) {
+    const hit = planAll.find(x => String(x.id) === String(j.planRowId) && String(x.code) === String(j.jobCode) && String(x.month) === String(j.month));
+    if (hit) return hit;
+  }
+  const same = planAll.filter(x => String(x.code) === String(j.jobCode) && String(x.month) === String(j.month));
+  return same.length === 1 ? same[0] : null;
+}
 function custDoneBtnHtml(j) {
-  if (j.cancelled || !isCustomCode(j.jobCode) || !j.planRowId) return '';
-  const r = planAll.find(x => String(x.id) === String(j.planRowId) && String(x.code) === String(j.jobCode) && String(x.month) === String(j.month));
-  if (!r) return '';
-  return `<button type="button" data-id="${esc(r.id)}" data-code="${esc(r.code)}" data-month="${esc(r.month)}" onclick="reopenCustFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl bg-blue-600 hover:bg-blue-700 text-white"><i class="fa-solid fa-rotate-right"></i> เปิดงานอีกครั้ง</button>`;
+  if (j.cancelled || !isCustomCode(j.jobCode)) return '';
+  return `<button type="button" data-code="${esc(j.jobCode)}" data-month="${esc(j.month)}" data-plan="${esc(j.planRowId || '')}" onclick="reopenCustFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl bg-blue-600 hover:bg-blue-700 text-white"><i class="fa-solid fa-rotate-right"></i> เปิดงานอีกครั้ง</button>`;
 }
 async function reopenCustFromHist(btn) {
-  const r = planAll.find(x => String(x.id) === btn.dataset.id && String(x.code) === btn.dataset.code && String(x.month) === btn.dataset.month);
-  if (!r) return;
+  const r = custRowOfJob({ jobCode: btn.dataset.code, month: btn.dataset.month, planRowId: btn.dataset.plan });
+  if (!r) return uiAlert('ไม่พบแถวของงานนี้ในแผน (อาจถูกลบออกจากแผนแล้ว)');
   if (r.done) await togglePlanDoneRow(r);   // ถ้าปิดไว้ ให้เปิดกลับก่อน
   planMonth = String(r.month); setSavedPlanMonth(planMonth);
   try { monthPickerSet('planMonthSelect', planMonth); } catch (e) {}
