@@ -1625,7 +1625,7 @@ function renderPlan() {
         const isCustomRow = isCustomCode(r.code);
         if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
         const prCell = r.cancelled ? '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-300 rounded-full px-1.5 py-0.5">ยกเลิก</span>' : isCustomRow ? '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-full px-1.5 py-0.5">custom</span>' : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
-        html += `<tr class="plan-row ${r.cancelled ? 'plan-cancel' : missing ? 'bg-rose-50' : ''}" onclick="${r.cancelled ? `openCancelledPlanHistory(${i})` : pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : `openPlanJob(${i})`}"><td class="font-black text-[21px] text-slate-800">${n + 1}</td><td class="font-black text-[21px] text-slate-900 ${r.cancelled ? 'cx' : ''}">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(planCodeLabel(r, rows)) + planPumpBadge(r)}</td>
+        html += `<tr class="plan-row ${r.cancelled ? 'plan-cancel' : missing ? 'bg-rose-50' : ''}" onclick="${r.cancelled ? `openCancelledPlanHistory(${i})` : pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : isCustomRow ? `openCustomPlanRow(${i})` : `openPlanJob(${i})`}"><td class="font-black text-[21px] text-slate-800">${n + 1}</td><td class="font-black text-[21px] text-slate-900 ${r.cancelled ? 'cx' : ''}">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(planCodeLabel(r, rows)) + planPumpBadge(r)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}${planEditing || r.cancelled || isCustomRow || !r.id ? '' : `<div class="mt-0.5"><button type="button" aria-label="หมายเหตุ" onclick="event.stopPropagation();editPlanNoteQuick(${i})" class="text-[11px] text-amber-600 hover:text-amber-800 px-1"><i class="fa-solid fa-pen-to-square"></i></button></div>`}</td><td class="font-black text-[21px] text-blue-900 ${r.cancelled ? 'cx' : ''}">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
     });
@@ -1870,6 +1870,16 @@ function openPlanHistory(i) {
   if (!job) return uiAlert(`ไม่พบประวัติการตัดของ ${r.code}`);
   switchTab('history');
   openHistoryJob(job.id);
+}
+
+// งานลูกค้า (ไม่มี BOM): มีประวัติการตัดแล้ว -> เปิดประวัติ, ยังไม่เคยตัด -> เปิดหน้าคำนวณ
+function openCustomPlanRow(i) {
+  const r = planRowsOf(planMonth)[i];
+  if (!r) return;
+  const has = historyJobs.some(h => !h.cancelled && h.jobCode === String(r.code) && String(h.month || '') === String(planMonth)
+    && (h.planRowId ? String(h.planRowId) === String(r.id || '') : true));
+  if (has) return openCancelledPlanHistory(i);
+  return openPlanJob(i);
 }
 
 // แถวที่ยกเลิกในแผน: ไม่คำนวณ/ตัดต่อแล้ว แต่กดดูประวัติการตัดของแถวนั้นได้
