@@ -460,6 +460,10 @@ function getPlan_(ss) {
     fill.push([sq]);
   });
   if (changed) sh.getRange(2, 9, v.length, 1).setValues(fill);
+  // ย้อนหลัง: แถวแผนเก่าที่ยังไม่มีรหัสแถว ให้สร้างรหัสให้ เพื่อให้แก้หมายเหตุและปิดงานได้ทุกเดือน
+  let idChanged = false;
+  v.forEach(r => { if (String(r[2]).trim() && !String(r[5] || '').trim()) { r[5] = Utilities.getUuid().replace(/-/g, '').slice(0, 12); idChanged = true; } });
+  if (idChanged) sh.getRange(2, 6, v.length, 1).setValues(v.map(r => [String(r[5] || '')]));
   return {
     ok: true,
     plan: v.filter(r => String(r[2]).trim() !== '').map(r => ({
