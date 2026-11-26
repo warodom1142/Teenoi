@@ -1890,15 +1890,17 @@ function updateCustDoneBtn() {
   const wrap = document.getElementById('custDoneWrap');
   if (!wrap) return;
   const r = custDoneRow();
-  wrap.classList.toggle('hidden', !r);
-  if (!r) return;
+  wrap.classList.toggle('hidden', !r || !!r.done);   // จบแล้วไม่ต้องแสดงปุ่ม
+  if (!r || r.done) return;
   const btn = document.getElementById('custDoneBtn');
-  btn.innerHTML = r.done ? '<i class="fa-solid fa-rotate-left"></i> เปิดงานใหม่' : '<i class="fa-solid fa-flag-checkered"></i> ปิดงาน (ตัดครบแล้ว)';
-  btn.className = `w-full py-2.5 font-bold text-sm rounded-xl ${r.done ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
+  btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> จบงาน';
+  btn.className = 'w-full py-2.5 font-bold text-sm rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white';
 }
 async function toggleCustDone() {
   const r = custDoneRow();
-  if (r) togglePlanDoneRow(r);
+  if (!r || r.done) return;
+  if (!(await uiDialog('จบงานนี้?\nเมื่อจบแล้วงานจะไปอยู่ในประวัติ', true))) return;
+  togglePlanDoneRow(r);
 }
 async function togglePlanDone(i) {
   const r = planRowsOf(planMonth)[i];
@@ -2787,7 +2789,7 @@ function custRowOfJob(j) {
   return same.length === 1 ? same[0] : null;
 }
 function custDoneBtnHtml(j) {
-  if (j.cancelled || !isCustomCode(j.jobCode)) return '';
+  return '';   // ไม่มีปุ่มเปิดงานอีกแล้ว
   return `<button type="button" data-code="${esc(j.jobCode)}" data-month="${esc(j.month)}" data-plan="${esc(j.planRowId || '')}" onclick="reopenCustFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl bg-blue-600 hover:bg-blue-700 text-white"><i class="fa-solid fa-rotate-right"></i> เปิดงานอีกครั้ง</button>`;
 }
 // เปิดงานลูกค้าอีกครั้ง: ค่าที่เคยตัดกลับมาที่หน้าคำนวณให้แก้ไขได้ (เหมือนแก้ไขรายการ) ยืนยันแล้วจะแทนประวัติเดิม
