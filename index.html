@@ -1250,6 +1250,7 @@ async function commitStock() {
   let cutNotice = null;
   let doneInfo = null;
   let partialNode = null;
+  let custId = '';   // งานลูกค้าที่ตัดแล้ว (อยู่หน้าคำนวณต่อ)
   const btn = document.getElementById('btnCommit');
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   showBusy('กำลังบันทึกการตัดสต็อก');
@@ -1262,9 +1263,16 @@ async function commitStock() {
     if (j.ok) {
       const skipped = Array.isArray(j.skipped) ? j.skipped : [];
       const cutNow = skipped.length ? items.filter(it => !skipped.some(x => x.code === it.code)) : items;
-      // ตัดเสร็จ -> ล้างงานออกจากหน้าคำนวณทันที (ไม่คาไว้)
-      loadHistory();
+      // งานลูกค้า: อยู่หน้าคำนวณต่อ (เพื่อกดจบงาน) ไม่เด้งกลับหน้าแผน
+      custId = !isAdj && isCustomCode(jobSnap.code) ? String(mergeJob ? (mergeJob.planRowId || '') : (currentPlanRowId || '')) : '';
+      const custMonth = String(sendMonth);
+      // ตัดเสร็จ -> ล้างงานออกจากหน้าคำนวณทันที (ไม่คาไว้) ยกเว้นงานลูกค้า
+      await sharedFetch('history', fetchHistory);
       clearJobPanel();
+      if (custId && String(planMonth) === custMonth) {
+        const idx = planRowsOf(planMonth).findIndex(x => String(x.id) === custId && String(x.code) === String(jobSnap.code));
+        if (idx >= 0) await openPlanJob(idx);
+      }
       loadStock();
       toast(skipped.length ? 'ตัดได้บางส่วน ⚠️' : 'ตัดสต็อกเรียบร้อย ✅'); vibrate(60);
       doneInfo = isAdj ? ('ปรับสต็อกเรียบร้อย' + adjSticksText(items)) : `ตัดสต็อกเรียบร้อย\nโค้ดงานที่ตัด: ${jobSnap.code}\n${jobSnap.name || ''}`;
@@ -1281,8 +1289,8 @@ async function commitStock() {
   }
   btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก';
   if (cutNotice) notifyLine(cutNotice);   // แจ้งเตือนไลน์อัตโนมัติ (ไม่รอ ไม่บล็อกการใช้งาน)
-  if (partialNode) { await uiDialog('', false, partialNode); switchTab('plan'); }   // ตัดได้บางส่วน: ป๊อปอัปเด่นกลางจอ แล้วกลับหน้าแผน
-  else if (doneInfo) { await uiDialog(doneInfo, false); switchTab('plan'); }   // ป๊อปอัพยืนยัน แล้วกลับหน้าแผน
+  if (partialNode) { await uiDialog('', false, partialNode); if (!custId) switchTab('plan'); }   // ตัดได้บางส่วน: ป๊อปอัปเด่นกลางจอ แล้วกลับหน้าแผน
+  else if (doneInfo) { await uiDialog(doneInfo, false); if (!custId) switchTab('plan'); }   // ป๊อปอัพยืนยัน แล้วกลับหน้าแผน
 }
 
 // ป๊อปอัปกลางจอ: ตัดได้บางส่วน (รายการที่สต็อกไม่พอจะค้างอยู่ ยังไม่ถูกตัด)
