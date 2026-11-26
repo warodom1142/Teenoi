@@ -507,6 +507,16 @@ function doneSave_(ss, d) {
   return out_({ ok: true });
 }
 
+// รันครั้งเดียวจากตัวแก้ไข Apps Script (เลือกฟังก์ชัน resetAllDone แล้วกดรัน): เปิดงานลูกค้าที่ปิดไว้ทั้งหมด
+function resetAllDone() {
+  const sh = ensurePlan_(SpreadsheetApp.getActive());
+  const last = sh.getLastRow();
+  if (last < 2) return;
+  const rng = sh.getRange(2, 10, last - 1, 1);
+  rng.setValues(rng.getValues().map(r => [String(r[0]).trim() === 'เสร็จ' ? '' : r[0]]));
+  SpreadsheetApp.flush();
+}
+
 // บันทึกแผนของ "เดือนเดียว" แทนที่ของเดิมทั้งเดือน (เดือนอื่นไม่กระทบ)
 function planSave_(ss, d) {
   const month = String(d.month || '').trim();
