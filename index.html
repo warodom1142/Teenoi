@@ -2790,16 +2790,39 @@ function custDoneBtnHtml(j) {
   if (j.cancelled || !isCustomCode(j.jobCode)) return '';
   return `<button type="button" data-code="${esc(j.jobCode)}" data-month="${esc(j.month)}" data-plan="${esc(j.planRowId || '')}" onclick="reopenCustFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl bg-blue-600 hover:bg-blue-700 text-white"><i class="fa-solid fa-rotate-right"></i> เปิดงานอีกครั้ง</button>`;
 }
+// เปิดงานลูกค้าอีกครั้ง: ค่าที่เคยตัดกลับมาที่หน้าคำนวณให้แก้ไขได้ (เหมือนแก้ไขรายการ) ยืนยันแล้วจะแทนประวัติเดิม
 async function reopenCustFromHist(btn) {
+  const j = historyJobs.find(x => String(x.id) === String(historyOpenId));
+  if (!j) return uiAlert('ไม่พบรายการประวัติ');
   const r = custRowOfJob({ jobCode: btn.dataset.code, month: btn.dataset.month, planRowId: btn.dataset.plan });
-  if (!r) return uiAlert('ไม่พบแถวของงานนี้ในแผน (อาจถูกลบออกจากแผนแล้ว)');
-  if (r.done) await togglePlanDoneRow(r);   // ถ้าปิดไว้ ให้เปิดกลับก่อน
-  planMonth = String(r.month); setSavedPlanMonth(planMonth);
-  try { monthPickerSet('planMonthSelect', planMonth); } catch (e) {}
-  const idx = planRowsOf(planMonth).findIndex(x => String(x.id) === String(r.id));
+  if (!(await uiDialog('เปิดงานนี้อีกครั้ง?\nค่าที่เคยตัดจะกลับมาที่หน้าคำนวณให้แก้ไขได้ ประวัติเดิมจะถูกแทนที่เมื่อยืนยัน', true))) return;
+  if (r && r.done) await togglePlanDoneRow(r);
+  editTarget = j;
+  currentActiveJob = customEntry(String(j.jobCode));
+  mergeTarget = null; planQtyLock = false;
+  currentPlanRowId = r ? String(r.id || '') : String(j.planRowId || '');
+  currentJobMonth = String(j.month); setCurrentJobMonth(currentJobMonth);
+  monthPickerSet('jobMonthSelect', currentJobMonth); updateJobMonthUI();
+  setAdjustMode(false);
+  document.getElementById('globalQty').value = Number(j.qty) || '';
+  document.getElementById('selectedJobTitle').textContent = `✏️ แก้ไข ${planLabelById(currentPlanRowId, j.jobCode, j.month)} - ${j.jobName || 'งานลูกค้า'}`;
+  document.getElementById('selectedJobPump').textContent = 'เปิดงานอีกครั้ง · ยืนยันแล้วจะแทนประวัติเดิม';
+  renderMetalCalcRows(currentActiveJob.metals);
+  (j.items || []).forEach(it => {
+    const mc = document.querySelector(`#metalCalcContainer .metal-card[data-metal="${CSS.escape(it.name)}"]`);
+    if (!mc) return;
+    mc.querySelector('.withdraw-input').value = Number(it.withdraw) || '';
+    mc.querySelector('.return-input').value = Number(it.ret) || '';
+    mc.querySelector('.scrap-input').value = Number(it.scrap) || '';
+  });
+  calculateAllRows();
+  const btnC = document.getElementById('btnCommit');
+  btnC.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> ยืนยันการแก้ไข';
+  btnC.classList.remove('bg-rose-600', 'hover:bg-rose-700'); btnC.classList.add('bg-amber-500', 'hover:bg-amber-600', 'text-amber-950');
+  document.getElementById('editModeBanner').classList.remove('hidden');
+  document.getElementById('adjustFromCalcBtn').classList.add('hidden');
+  document.getElementById('custDoneWrap').classList.add('hidden');
   showHistoryList();
-  if (idx < 0) return uiAlert('ไม่พบแถวนี้ในแผนเดือนนี้');
-  await openPlanJob(idx);
   switchTab('calc');
 }
 function editBtnHtml(j) {
