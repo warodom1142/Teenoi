@@ -2775,16 +2775,24 @@ function shareHistoryLine(id) {
 }
 
 // ===== แก้ไขรายการที่ตัดไปแล้ว (คืนสต็อกรอบเดิม แล้วตัดตามค่าใหม่ในครั้งเดียว) =====
-// ปิด/เปิดงานลูกค้าจากหน้าประวัติ (ไม่ใช้รหัส)
+// งานลูกค้าในหน้าประวัติ: ปุ่ม "เปิดงานอีกครั้ง" ย้ายประวัติกลับไปคาไว้หน้าคำนวณ (ปิดงานทำที่หน้าคำนวณ)
 function custDoneBtnHtml(j) {
   if (j.cancelled || !isCustomCode(j.jobCode) || !j.planRowId) return '';
   const r = planAll.find(x => String(x.id) === String(j.planRowId) && String(x.code) === String(j.jobCode) && String(x.month) === String(j.month));
   if (!r) return '';
-  return `<button type="button" data-id="${esc(r.id)}" data-code="${esc(r.code)}" data-month="${esc(r.month)}" onclick="toggleCustDoneFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl ${r.done ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}">${r.done ? '<i class="fa-solid fa-rotate-left"></i> เปิดงานใหม่' : '<i class="fa-solid fa-flag-checkered"></i> ปิดงาน'}</button>`;
+  return `<button type="button" data-id="${esc(r.id)}" data-code="${esc(r.code)}" data-month="${esc(r.month)}" onclick="reopenCustFromHist(this)" class="w-full py-2.5 mb-2 font-bold text-sm rounded-xl bg-blue-600 hover:bg-blue-700 text-white"><i class="fa-solid fa-rotate-right"></i> เปิดงานอีกครั้ง</button>`;
 }
-function toggleCustDoneFromHist(btn) {
+async function reopenCustFromHist(btn) {
   const r = planAll.find(x => String(x.id) === btn.dataset.id && String(x.code) === btn.dataset.code && String(x.month) === btn.dataset.month);
-  if (r) togglePlanDoneRow(r);
+  if (!r) return;
+  if (r.done) await togglePlanDoneRow(r);   // ถ้าปิดไว้ ให้เปิดกลับก่อน
+  planMonth = String(r.month); setSavedPlanMonth(planMonth);
+  try { monthPickerSet('planMonthSelect', planMonth); } catch (e) {}
+  const idx = planRowsOf(planMonth).findIndex(x => String(x.id) === String(r.id));
+  showHistoryList();
+  if (idx < 0) return uiAlert('ไม่พบแถวนี้ในแผนเดือนนี้');
+  await openPlanJob(idx);
+  switchTab('calc');
 }
 function editBtnHtml(j) {
   if (j.cancelled) return '';
