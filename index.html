@@ -228,6 +228,7 @@ html.dark .hist-plan-cancel{background:repeating-linear-gradient(-45deg,#1e293b 
     <div id="metalCalcContainer" class="space-y-4"></div>
   </div>
 
+  <div id="custDoneWrap" class="hidden mb-2"><button type="button" id="custDoneBtn" onclick="toggleCustDone()" class="w-full py-2.5 font-bold text-sm rounded-xl"></button></div>
   <button type="button" id="btnCommit" onclick="commitStock()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl"><i class="fa-solid fa-warehouse"></i> ยืนยันตัดสต็อก</button>
   <button type="button" onclick="resetCalcForm()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl"><i class="fa-solid fa-rotate-left"></i> รีเซ็ตตัวเลขทั้งหมด</button>
 
@@ -1624,7 +1625,7 @@ function renderPlan() {
         const col = !pr ? '#94a3b8' : pr.pct >= 100 ? '#059669' : pr.pct > 0 ? '#d97706' : '#94a3b8';
         const isCustomRow = isCustomCode(r.code);
         if (pr && pr.pct >= 100 && !isCustomRow) doneNow.push((r.id || ('row' + i)) + '|' + r.code + '|' + r.qty);
-        const prCell = r.cancelled ? '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-300 rounded-full px-1.5 py-0.5">ยกเลิก</span>' : isCustomRow ? customStatusCell(r, i, rows) : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
+        const prCell = r.cancelled ? '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-300 rounded-full px-1.5 py-0.5">ยกเลิก</span>' : isCustomRow ? customStatusCell(r) : pr ? `<div class="relative inline-flex items-center justify-center" style="width:40px;height:40px" title="${pr.cut}/${pr.total} ประเภท"><svg width="40" height="40" viewBox="0 0 36 36" aria-hidden="true" style="transform:rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(148,163,184,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="14" fill="none" stroke="${col}" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="${pr.pct} 100" style="transition:stroke-dasharray .6s ease"/></svg><span class="absolute text-[10px] font-extrabold" style="color:${col}">${pr.pct}%</span></div>` : '-';
         html += `<tr class="plan-row ${r.cancelled ? 'plan-cancel' : missing ? 'bg-rose-50' : ''}" onclick="${r.cancelled ? `openCancelledPlanHistory(${i})` : pr && pr.pct >= 100 && !isCustomRow ? `openPlanHistory(${i})` : isCustomRow ? `openCustomPlanRow(${i})` : `openPlanJob(${i})`}"><td class="font-black text-[21px] text-slate-800">${n + 1}</td><td class="font-black text-[21px] text-slate-900 ${r.cancelled ? 'cx' : ''}">${isCustomRow ? '<span class="block text-[10px] font-extrabold text-blue-700">งานลูกค้า</span>' + esc(customBillOf(r.code) || '-') : esc(planCodeLabel(r, rows)) + planPumpBadge(r)}</td>
           <td class="nm">${nameCell}${r.note ? `<div class="text-[11px] font-bold text-amber-700 mt-0.5">📝 ${esc(r.note)}</div>` : ''}${planEditing || r.cancelled || isCustomRow || !r.id ? '' : `<div class="mt-0.5"><button type="button" aria-label="หมายเหตุ" onclick="event.stopPropagation();editPlanNoteQuick(${i})" class="text-[11px] text-amber-600 hover:text-amber-800 px-1"><i class="fa-solid fa-pen-to-square"></i></button></div>`}</td><td class="font-black text-[21px] text-blue-900 ${r.cancelled ? 'cx' : ''}">${formatNum(Number(r.qty) || 0)}${unitPer(r) ? `<div class="text-[9px] font-semibold text-emerald-700">${formatNum(Number(r.qty) * unitPer(r))} ยูนิต</div>` : ''}</td><td>${prCell}</td></tr>`;
       }
@@ -1877,17 +1878,35 @@ function customCutCount(r) {
   return historyJobs.filter(h => !h.cancelled && h.jobCode === String(r.code) && String(h.month || '') === String(planMonth)
     && (h.planRowId ? String(h.planRowId) === String(r.id || '') : true)).length;
 }
-function customStatusCell(r, i) {
-  const n = customCutCount(r);
-  const label = r.done ? '✅ ปิดงานแล้ว' : n ? `ตัดแล้ว ${n} ครั้ง` : 'custom';
-  const cls = r.done ? 'text-emerald-800 bg-emerald-100 border-emerald-300' : 'text-blue-800 bg-blue-100 border-blue-300';
-  const btn = r.id && !planEditing ? `<button type="button" onclick="event.stopPropagation();togglePlanDone(${i})" class="text-[10px] font-bold text-slate-600 underline">${r.done ? 'เปิดงานใหม่' : 'ปิดงาน'}</button>` : '';
-  return `<div class="flex flex-col items-center gap-0.5"><span class="inline-block whitespace-nowrap text-[10px] font-extrabold ${cls} border rounded-full px-1.5 py-0.5">${label}</span>${btn}</div>`;
+function customStatusCell(r) {
+  return '<span class="inline-block whitespace-nowrap text-[10px] font-extrabold text-blue-800 bg-blue-100 border border-blue-300 rounded-full px-1.5 py-0.5">ลูกค้า</span>';
 }
-// กดปิด/เปิดงานลูกค้า (ไม่ต้องใส่รหัส)
+// ปุ่มปิดงานลูกค้า (หน้าคำนวณ อยู่ใต้ปุ่มตัดสต็อก) ไม่ใช้รหัส
+function custDoneRow() {
+  if (!currentActiveJob || !isCustomCode(currentActiveJob.code) || !currentPlanRowId) return null;
+  return planAll.find(x => String(x.id) === String(currentPlanRowId) && String(x.code) === String(currentActiveJob.code) && String(x.month) === String(currentJobMonth)) || null;
+}
+function updateCustDoneBtn() {
+  const wrap = document.getElementById('custDoneWrap');
+  if (!wrap) return;
+  const r = custDoneRow();
+  wrap.classList.toggle('hidden', !r);
+  if (!r) return;
+  const btn = document.getElementById('custDoneBtn');
+  btn.innerHTML = r.done ? '<i class="fa-solid fa-rotate-left"></i> เปิดงานใหม่' : '<i class="fa-solid fa-flag-checkered"></i> ปิดงาน (ตัดครบแล้ว)';
+  btn.className = `w-full py-2.5 font-bold text-sm rounded-xl ${r.done ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`;
+}
+async function toggleCustDone() {
+  const r = custDoneRow();
+  if (r) togglePlanDoneRow(r);
+}
 async function togglePlanDone(i) {
   const r = planRowsOf(planMonth)[i];
   if (!r || !r.id) return uiAlert('แถวนี้ยังไม่มีรหัสแถว กรุณาบันทึกแผนก่อน');
+  togglePlanDoneRow(r);
+}
+async function togglePlanDoneRow(r) {
+  if (!r.id) return uiAlert('แถวนี้ยังไม่มีรหัสแถว กรุณาบันทึกแผนก่อน');
   const next = !r.done;
   showBusy('กำลังบันทึก');
   try {
@@ -1898,7 +1917,8 @@ async function togglePlanDone(i) {
     const pr = planAll.find(x => String(x.id) === String(r.id) && String(x.month) === String(r.month) && String(x.code) === String(r.code));
     if (pr) pr.done = next;
     cacheSet('plan', planAll);
-    renderPlan();
+    if (!planEditing) renderPlan();
+    updateCustDoneBtn();
     toast(next ? 'ปิดงานแล้ว ✅' : 'เปิดงานใหม่แล้ว');
   } catch (e) { hideBusy(); await uiAlert('เชื่อมต่อไม่ได้ (' + e.message + ')'); }
 }
@@ -1954,6 +1974,7 @@ async function openPlanJob(i) {
   currentPlanRowId = r.id || '';
   currentActiveJob = entry;
   applyJobToCalculator(Number(r.qty), { target });
+  updateCustDoneBtn();
 }
 
 // ค้นหา/เลือกรหัสงานจาก BOM
@@ -3307,6 +3328,7 @@ function exitEditMode() {
 function clearJobPanel() {
   exitEditMode();
   currentPlanRowId = '';
+  setTimeout(updateCustDoneBtn, 0);
   updateJobMonthUI();
   currentActiveJob = null; submitId = null; mergeTarget = null; planQtyLock = false;
   updateMergeInfo();
